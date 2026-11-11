@@ -1,4 +1,4 @@
-import angle from "@/assets/qesseq16-angle.jpg.asset.json";
+import angle from "@/assets/qesseq16-angle-cutout.webp";
 import type { Copy } from "@/lib/i18n";
 
 export function Specs({ copy }: { copy: Copy }) {
@@ -9,12 +9,12 @@ export function Specs({ copy }: { copy: Copy }) {
           <p className="eyebrow">{copy.specs.eyebrow}</p>
           <h2 className="mt-4 text-4xl font-bold md:text-5xl">{copy.specs.title}</h2>
           <img
-            src={angle.url}
+            src={angle}
             alt="QESSEQ 16 three-quarter view in brushed aluminium"
             loading="lazy"
-            width={1448}
-            height={1086}
-            className="mt-10 w-full rounded-3xl border border-border shadow-card"
+            width={1386}
+            height={792}
+            className="mt-10 w-full drop-shadow-[0_30px_40px_oklch(0_0_0/0.6)]"
           />
         </div>
         <dl className="divide-y divide-border rounded-3xl border border-border bg-surface">
