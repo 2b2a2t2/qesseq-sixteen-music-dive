@@ -1,6 +1,5 @@
 # Qesseq Sixteen Music Dive
 
-i want to create a site like https://vital.audio/ to present and sell my device : the QESSEQ 16, an advanced MIDI sequencer. The brand is called WipidiM and the slogan : High Music Dive. the code of the project is based on https://github.com/2b2a2t2/Teensy2048
 
 This project was built with [Lovable](https://lovable.dev).
 
