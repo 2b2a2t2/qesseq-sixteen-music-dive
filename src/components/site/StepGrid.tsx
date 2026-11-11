@@ -35,7 +35,7 @@ export function StepGrid() {
           <div key={t.name} className="flex items-center gap-3" style={{ "--pad": t.color } as CSSProperties}>
             <span className="w-12 shrink-0 font-mono text-[0.6rem] tracking-widest text-muted-foreground">{t.name}</span>
             <div className="grid flex-1 grid-cols-16 gap-1 md:gap-1.5">
-              {grid[r].map((on, c) => {
+              {(grid[r] ?? []).map((on, c) => {
                 const hit = on && c === step;
                 return (
                   <button
