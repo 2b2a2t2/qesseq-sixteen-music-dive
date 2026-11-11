@@ -28,3 +28,8 @@ use the editor.
   own key and store it in Secrets.
 - **Secrets.** Lovable manages them. Do not put secret values in the repo.
 <!-- LOVABLE:END -->
+
+## Project rules
+
+- Landing page is one shared `Landing` component rendered by `/` (en) and `/fr` (fr); all copy lives in `src/lib/i18n.ts` — keeps both languages in sync and each page indexable.
+- Pre-order sign-ups go through a public server function using the publishable client against an insert-only table policy — visitors can add but never read the list.
