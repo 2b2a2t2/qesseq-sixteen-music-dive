@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QESSEQ 16 — Advanced MIDI Sequencer by WipidiM</title>
+<meta name="description" content="QESSEQ 16 by WipidiM: a 16-track advanced MIDI sequencer with 48 lit pads, 8 encoders, built-in arpeggiators, a genre progression engine and generators for basslines, leads and harmonies.">
+<meta name="author" content="WipidiM">
+
+<meta property="og:site_name" content="WipidiM">
+<meta property="og:title" content="QESSEQ 16 — Advanced MIDI Sequencer by WipidiM">
+<meta property="og:description" content="Sixteen tracks, forty-eight lit pads, arpeggios and a progression engine that writes with you. High Music Dive.">
+<meta property="og:type" content="website">
+<meta property="og:image" content="assets/web/qesseq16-angle-cutout-lg.webp">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="icon" type="image/png" href="assets/web/favicon.png">
+<link rel="apple-touch-icon" href="assets/web/favicon.png">
+<meta name="theme-color" content="#0b0f1c">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- ============ HEADER ============ -->
+<header class="nav" id="nav">
+  <a href="#top" class="nav__brand">
+    <img src="assets/web/logo-spin.gif" alt="" width="36" height="36" class="nav__mark">
+    <span>WipidiM</span>
+  </a>
+
+  <nav class="nav__links" aria-label="Primary">
+    <a href="#features">Features</a>
+    <a href="#modes">Modes</a>
+    <a href="#gallery">Gallery</a>
+    <a href="#specs">Specs</a>
+  </nav>
+
+  <div class="nav__actions">
+    <a href="#preorder" class="btn btn--hero btn--sm">Pre-order</a>
+    <button class="nav__toggle" id="navToggle" aria-label="Toggle navigation" aria-expanded="false" aria-controls="menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<!-- ============ OVERLAY MENU ============ -->
+<div class="menu" id="menu" aria-hidden="true">
+  <nav class="menu__list" aria-label="Mobile">
+    <a href="#features" class="menu__link">Features</a>
+    <a href="#modes" class="menu__link">Modes</a>
+    <a href="#gallery" class="menu__link">Gallery</a>
+    <a href="#specs" class="menu__link">Specs</a>
+    <a href="#preorder" class="menu__link menu__link--accent">Pre-order</a>
+  </nav>
+  <p class="menu__slogan">High Music Dive</p>
+</div>
+
+<main id="top">
+
+  <!-- ============ HERO ============ -->
+  <section class="hero">
+    <div class="hero__glow" aria-hidden="true"></div>
+    <div class="grid-lines" aria-hidden="true"></div>
+
+    <div class="wrap hero__inner">
+      <div class="hero__copy">
+        <p class="eyebrow reveal">WipidiM · High Music Dive</p>
+        <h1 class="hero__title reveal" data-delay="1">QESSEQ&nbsp;16</h1>
+        <p class="hero__tagline reveal" data-delay="2">The advanced MIDI sequencer</p>
+        <p class="hero__intro reveal" data-delay="3">
+          Sixteen tracks, forty-eight lit pads, eight encoders and a brain that writes
+          basslines, arpeggios, leads and harmonies with you. No menus to save, no computer required.
+        </p>
+
+        <div class="hero__cta reveal" data-delay="3">
+          <a href="#preorder" class="btn btn--hero">Join the pre-order list</a>
+          <a href="#features" class="btn btn--steel">Explore the instrument</a>
+        </div>
+
+        <dl class="hero__stats reveal" data-delay="4">
+          <div><dt>16</dt><dd>tracks</dd></div>
+          <div><dt>64</dt><dd>steps per track</dd></div>
+          <div><dt>48</dt><dd>lit pads</dd></div>
+          <div><dt>8</dt><dd>encoders</dd></div>
+        </dl>
+      </div>
+
+      <figure class="hero__shot led-reflection reveal" data-delay="2">
+        <img src="assets/web/qesseq16-angle-cutout-lg.webp"
+             alt="The QESSEQ 16 at an angle from the left: brushed metal panel, colour touchscreen, eight blue-lit encoders and forty-eight illuminated pads"
+             width="2000" height="1143" fetchpriority="high">
+      </figure>
+    </div>
+
+    <a href="#manifesto" class="hero__scroll" aria-label="Scroll down"><span></span></a>
+  </section>
+
+  <!-- ============ MANIFESTO ============ -->
+  <section class="manifesto" id="manifesto">
+    <div class="wrap wrap--narrow">
+      <h2 class="manifesto__title reveal">
+        <span>Everything is live.</span>
+        <span class="text-led">Dive in.</span>
+      </h2>
+      <p class="manifesto__body reveal" data-delay="1">
+        One instrument, three ways to play: a keyboard, a 16-track sequencer, and a bank
+        of MIDI knobs. Every change happens while the music runs.
+      </p>
+      <div class="led-line reveal" data-delay="2" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- ============ FEATURES ============ -->
+  <section class="section" id="features">
+    <div class="wrap">
+
+      <!-- 01 Sequence -->
+      <article class="feature">
+        <div class="feature__text reveal">
+          <p class="eyebrow">01 — Sequence</p>
+          <h2 class="feature__title">Sixteen tracks. Each with its own time.</h2>
+          <p class="feature__body">
+            One track per MIDI channel, up to 64 steps each. Run tracks at different lengths
+            and speeds for polymeters and polyrhythms that never repeat the same way twice.
+          </p>
+          <ul class="points">
+            <li>DRUM, MONO and POLY track types</li>
+            <li>Gate, velocity, accent, glide, tie and probability per step</li>
+            <li>Internal clock or external MIDI sync</li>
+          </ul>
+        </div>
+
+        <!-- interactive step grid -->
+        <div class="feature__visual reveal" data-delay="1">
+          <div class="stepgrid" id="stepgrid">
+            <div class="stepgrid__bar">
+              <span>SEQUENCER 1</span>
+              <span class="stepgrid__step" id="stepCount">STEP 01 / 16</span>
+            </div>
+            <div class="stepgrid__scroll">
+              <div class="stepgrid__rows" id="stepRows"></div>
+            </div>
+            <p class="stepgrid__hint">▸ tap the pads<span class="only-narrow"> · swipe →</span></p>
+          </div>
+        </div>
+      </article>
+
+      <!-- 02 Generate -->
+      <article class="feature feature--flip">
+        <div class="feature__text reveal">
+          <p class="eyebrow">02 — Generate</p>
+          <h2 class="feature__title">Let it write the bassline.</h2>
+          <p class="feature__body">
+            Built-in generators roll basslines, leads, arpeggios and harmonies that stay in
+            your key and scale. Turn FILL, ACCENT and GLIDE until it grooves.
+            Don't like it? Hold to undo.
+          </p>
+          <ul class="points">
+            <li>Bass, Lead, Arp, Harm, Comp and Skank engines</li>
+            <li>Classic random or Euclidean rhythms</li>
+            <li>18 drum styles with live fill and motion</li>
+          </ul>
+        </div>
+        <div class="feature__visual reveal" data-delay="1">
+          <figure class="shot shot--43">
+            <img src="assets/web/qesseq16-top-cutout-lg.webp"
+                 alt="The QESSEQ 16 at a three-quarter angle from the front, its touchscreen showing the Sequencer page and generator controls"
+                 loading="lazy" width="2000" height="1179">
+          </figure>
+        </div>
+      </article>
+
+      <!-- 03 Arpeggiator -->
+      <article class="feature">
+        <div class="feature__text reveal">
+          <p class="eyebrow">03 — Arpeggiate</p>
+          <h2 class="feature__title">Nine ways to walk a chord.</h2>
+          <p class="feature__body">
+            Set any MONO track to <strong>ARP</strong> and it becomes an arpeggiator.
+            Span the chord over up to four octaves, pick a walk order, then arm a sub-page
+            and the whole encoder row turns into that page's controls.
+          </p>
+          <ul class="points">
+            <li>Walks: up, down, up-down, random ×2, out-in, in-out, converge, diverge</li>
+            <li>Four sub-pages — ARP ORDER · ARP MOTION · ARP GENERATIVE · ARP OPTIONS</li>
+            <li>Markov and random-walk engines with seed, rate, depth and memory</li>
+          </ul>
+        </div>
+
+        <div class="feature__visual reveal" data-delay="1">
+          <div class="arp" id="arp">
+            <div class="arp__bar">
+              <span>ARP</span>
+              <span class="arp__mode" id="arpMode">UP</span>
+            </div>
+            <div class="arp__chord">
+              <span class="arp__label">CHORD</span>
+              <span class="arp__notes" id="arpChord">C · E · G · B</span>
+            </div>
+            <ol class="arp__track" id="arpTrack"></ol>
+            <div class="arp__meta">
+              <span>SPAN <b id="arpSpan">2 OCT</b></span>
+              <span>SKIP <b>OFF</b></span>
+              <span>INST <b>OFF</b></span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 04 Progressions -->
+      <article class="feature feature--flip">
+        <div class="feature__text reveal">
+          <p class="eyebrow">04 — Progress</p>
+          <h2 class="feature__title">A progression engine with taste.</h2>
+          <p class="feature__body">
+            In <strong>KEY 4</strong> the instrument proposes chords from a real genre table:
+            eighteen transition matrices, chord qualities, inversions and rhythm templates
+            measured from the music itself. Tap to accept, hold to bake it into the sequence.
+          </p>
+          <ul class="points">
+            <li>18 genre grammars — Pop, Rock, Jazz, Funk, Reggae, Dubtechno, Latin, Modal…</li>
+            <li>Cadence bands: authentic · plagal · deceptive · half</li>
+            <li>Phrase templates FREE / AABB / ABAB / ABAC / AABA</li>
+            <li>Scale, root, octave and chord latch on the encoders</li>
+          </ul>
+        </div>
+
+        <div class="feature__visual reveal" data-delay="1">
+          <div class="prog" id="prog">
+            <div class="prog__bar">
+              <span>KEYBOARD 4</span>
+              <span class="prog__genre" id="progGenre">JAZZ</span>
+            </div>
+            <ol class="prog__chords" id="progChords">
+              <li><button type="button">ii</button></li>
+              <li><button type="button">V</button></li>
+              <li><button type="button">I</button></li>
+              <li><button type="button">vi</button></li>
+            </ol>
+            <div class="prog__meta">
+              <span>CADENCE <b id="progCad">AUTHENTIC</b></span>
+              <span>PHRASE <b>AABB</b></span>
+              <span>SCALE <b>MINOR</b></span>
+            </div>
+            <p class="prog__hint">▸ tap a chord to accept the proposal</p>
+          </div>
+        </div>
+      </article>
+
+      <!-- 05 Follow -->
+      <article class="feature">
+        <div class="feature__text reveal">
+          <p class="eyebrow">05 — Follow</p>
+          <h2 class="feature__title">Chain tracks into harmony.</h2>
+          <p class="feature__body">
+            Point one track at another and it listens. A lead follows your chords, a harmony
+            track reads your bassline, a bass locks to the progression. Change one part and
+            the others move with it.
+          </p>
+          <ul class="points">
+            <li>Bass → Harm → Chords → Lead chains</li>
+            <li>Follow, or freeze the chord of the moment</li>
+            <li>Chord-tone and guide-tone mapping</li>
+          </ul>
+        </div>
+
+        <div class="feature__visual reveal" data-delay="1">
+          <div class="chain">
+            <div class="chain__node" style="--pad:var(--led-blue)">
+              <span class="chain__dot"></span>
+              <span class="chain__label">BASS</span>
+              <span class="chain__sub">CH 1 · GNR8</span>
+            </div>
+            <span class="chain__link" aria-hidden="true"></span>
+            <div class="chain__node" style="--pad:var(--led-cyan)">
+              <span class="chain__dot"></span>
+              <span class="chain__label">HARM</span>
+              <span class="chain__sub">CH 2 · FOLLOW</span>
+            </div>
+            <span class="chain__link" aria-hidden="true"></span>
+            <div class="chain__node" style="--pad:var(--led-violet)">
+              <span class="chain__dot"></span>
+              <span class="chain__label">CHORDS</span>
+              <span class="chain__sub">CH 3 · POLY</span>
+            </div>
+            <span class="chain__link" aria-hidden="true"></span>
+            <div class="chain__node" style="--pad:var(--led-green)">
+              <span class="chain__dot"></span>
+              <span class="chain__label">LEAD</span>
+              <span class="chain__sub">CH 4 · MAP ct</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 06 Control -->
+      <article class="feature feature--flip">
+        <div class="feature__text reveal">
+          <p class="eyebrow">06 — Control</p>
+          <h2 class="feature__title">Eight knobs. Your whole studio.</h2>
+          <p class="feature__body">
+            Switch to encoder mode and the eight knobs become MIDI CC controllers, with banks
+            for 36 CCs. Your DAW sends values back, so the knobs always match.
+            Drive Ableton Live clips and devices too.
+          </p>
+          <ul class="points">
+            <li>CC banks F1–F4</li>
+            <li>Two-way value feedback</li>
+            <li>Ableton Live clip and device control</li>
+          </ul>
+        </div>
+
+        <div class="feature__visual reveal" data-delay="1">
+          <figure class="shot shot--crop">
+            <img src="assets/web/qesseq16-front-cutout-lg.webp"
+                 alt="Close-up of the QESSEQ 16's eight blue-lit encoders and brushed aluminium panel"
+                 loading="lazy" width="2000" height="1131">
+          </figure>
+        </div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ============ MODES ============ -->
+  <section class="section section--ruled" id="modes">
+    <div class="wrap">
+      <div class="section__head reveal">
+        <p class="eyebrow">Three families · Twelve modes</p>
+        <h2 class="section__title">One pad picks the mode.<br>The screen tells you where you are.</h2>
+        <p class="section__lead">Each family has four variants. The instrument remembers the last one you used.</p>
+      </div>
+
+      <div class="modes">
+        <article class="mode" style="--pad:var(--mode-enc)">
+          <span class="mode__key">ENC</span>
+          <h3 class="mode__name">Encoder</h3>
+          <p class="mode__desc">Knobs as MIDI controllers</p>
+          <ol class="mode__variants">
+            <li>CC knobs &amp; banks</li>
+            <li>Shared sequencer controls</li>
+            <li>Channel select</li>
+            <li>Channel picker</li>
+          </ol>
+        </article>
+
+        <article class="mode" style="--pad:var(--mode-seq)">
+          <span class="mode__key">SEQ</span>
+          <h3 class="mode__name">Sequencer</h3>
+          <p class="mode__desc">Program, generate, chain</p>
+          <ol class="mode__variants">
+            <li>Tracks &amp; steps</li>
+            <li>Effects &amp; step row</li>
+            <li>Track setup</li>
+            <li>Timing, input &amp; save</li>
+          </ol>
+        </article>
+
+        <article class="mode" style="--pad:var(--mode-key)">
+          <span class="mode__key">KEY</span>
+          <h3 class="mode__name">Keyboard</h3>
+          <p class="mode__desc">Play notes and chords</p>
+          <ol class="mode__variants">
+            <li>Chromatic keyboard</li>
+            <li>Chords &amp; latch</li>
+            <li>Channel select</li>
+            <li>Genre progression engine</li>
+          </ol>
+        </article>
+      </div>
+
+      <p class="modes__gesture reveal">Tap · double-tap · hold — three gestures reach every variant.</p>
+    </div>
+  </section>
+
+  <!-- ============ GALLERY ============ -->
+  <section class="section section--ruled" id="gallery">
+    <div class="wrap">
+      <div class="section__head reveal">
+        <p class="eyebrow">The panel</p>
+        <h2 class="section__title">Seen in the dark.</h2>
+        <p class="section__lead">Forty-eight pads, eight ring-lit encoders and a screen that names every parameter in full words.</p>
+      </div>
+
+      <div class="gallery reveal">
+        <figure class="gallery__stage">
+          <img id="galleryStage" src="assets/web/qesseq16-angle-cutout-lg.webp"
+               alt="The QESSEQ 16 at an angle from the left, pads lit in blue, green, red and violet"
+               width="2000" height="1143" loading="lazy">
+        </figure>
+
+        <div class="gallery__thumbs" role="tablist" aria-label="Product views">
+          <button class="gallery__thumb is-active" type="button" role="tab" aria-selected="true"
+                  aria-label="View: angled from the left"
+                  data-src="assets/web/qesseq16-angle-cutout-lg.webp"
+                  data-alt="The QESSEQ 16 at an angle from the left, pads lit in blue, green, red and violet">
+            <img src="assets/web/qesseq16-angle-cutout.webp" alt="" loading="lazy" width="1386" height="792">
+          </button>
+          <button class="gallery__thumb" type="button" role="tab" aria-selected="false"
+                  aria-label="View: from above"
+                  data-src="assets/web/qesseq16-front-cutout-lg.webp"
+                  data-alt="The QESSEQ 16 shot straight down from above, touchscreen showing the Sequencer page">
+            <img src="assets/web/qesseq16-front-cutout.webp" alt="" loading="lazy" width="1263" height="714">
+          </button>
+          <button class="gallery__thumb" type="button" role="tab" aria-selected="false"
+                  aria-label="View: three-quarter from the front"
+                  data-src="assets/web/qesseq16-top-cutout-lg.webp"
+                  data-alt="The QESSEQ 16 at a three-quarter angle from the front, colour touchscreen centred">
+            <img src="assets/web/qesseq16-top-cutout.webp" alt="" loading="lazy" width="1411" height="832">
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SPECS ============ -->
+  <section class="section section--ruled" id="specs">
+    <div class="wrap wrap--narrow">
+      <div class="section__head reveal">
+        <p class="eyebrow">Under the panel</p>
+        <h2 class="section__title">Specifications</h2>
+      </div>
+
+      <dl class="specs reveal">
+        <div class="specs__row"><dt>Tracks</dt><dd>16, one per MIDI channel</dd></div>
+        <div class="specs__row"><dt>Steps</dt><dd>Up to 64 per track (4 × 16)</dd></div>
+        <div class="specs__row"><dt>Track types</dt><dd>DRUM · MONO · POLY</dd></div>
+        <div class="specs__row"><dt>Pads</dt><dd>48 illuminated touch pads</dd></div>
+        <div class="specs__row"><dt>Encoders</dt><dd>8 endless encoders</dd></div>
+        <div class="specs__row"><dt>Arpeggiator</dt><dd>9 walk orders, 4 sub-pages, Markov &amp; random-walk engines</dd></div>
+        <div class="specs__row"><dt>Progressions</dt><dd>18 genre grammars, 4 cadence bands, 5 phrase templates</dd></div>
+        <div class="specs__row"><dt>Generators</dt><dd>Bass · Lead · Arp · Harm · Comp · Skank — random or Euclidean</dd></div>
+        <div class="specs__row"><dt>Drum styles</dt><dd>18, with live fill and motion</dd></div>
+        <div class="specs__row"><dt>MIDI out</dt><dd>CC banks F1–F4, 36 CCs, two-way feedback, Ableton Live control</dd></div>
+        <div class="specs__row"><dt>Lighting</dt><dd>Addressable RGB LEDs</dd></div>
+        <div class="specs__row"><dt>Display</dt><dd>Built-in colour status screen</dd></div>
+        <div class="specs__row"><dt>MIDI in</dt><dd>USB-MIDI + 5-pin DIN input</dd></div>
+        <div class="specs__row"><dt>Clock</dt><dd>Internal master or external MIDI sync</dd></div>
+        <div class="specs__row"><dt>Firmware</dt><dd>Updatable over USB</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ============ PRE-ORDER ============ -->
+  <section class="section section--glow" id="preorder">
+    <div class="hero__glow" aria-hidden="true"></div>
+    <div class="wrap wrap--narrow preorder">
+      <div class="preorder__head reveal">
+        <img src="assets/web/logo-white.png" alt="" width="96" height="99" class="preorder__mark">
+        <p class="eyebrow">Pre-order list</p>
+        <h2 class="section__title">Be first in line.</h2>
+        <p class="section__lead">
+          The first QESSEQ 16 units are coming. Leave your email and we'll contact you
+          as soon as pre-orders open.
+        </p>
+      </div>
+
+      <form class="form reveal" id="orderForm" novalidate>
+        <div class="form__row">
+          <label class="field">
+            <span>Name *</span>
+            <input type="text" name="name" id="fName" required autocomplete="name" placeholder="Your name">
+          </label>
+          <label class="field">
+            <span>Email *</span>
+            <input type="email" name="email" id="fEmail" required autocomplete="email" placeholder="you@example.com">
+          </label>
+        </div>
+
+        <div class="form__row">
+          <label class="field">
+            <span>Country</span>
+            <input type="text" name="country" id="fCountry" autocomplete="country-name" placeholder="Where are we shipping?">
+          </label>
+          <label class="field">
+            <span>Quantity</span>
+            <select name="qty" id="fQty">
+              <option>1</option><option>2</option><option>3</option><option>4</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Message</span>
+          <textarea name="message" id="fMessage" rows="4" placeholder="Your setup, your music, your questions…"></textarea>
+        </label>
+
+        <p class="form__error" id="formError" role="alert" hidden>Please fill in your name and a valid email address.</p>
+
+        <button type="submit" class="btn btn--hero btn--block">Join the list</button>
+        <p class="form__note">
+          This opens your email app with the request pre-filled. No payment now — we only use
+          your address to contact you about the QESSEQ 16.
+        </p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="wrap footer__inner">
+    <div class="footer__brand">
+      <img src="assets/web/logo-white.png" alt="" width="44" height="45" loading="lazy">
+      <div>
+        <p class="footer__name">WipidiM</p>
+        <p class="footer__slogan">High Music Dive</p>
+      </div>
+    </div>
+
+    <nav class="footer__links" aria-label="Footer">
+      <a href="#features">Features</a>
+      <a href="#modes">Modes</a>
+      <a href="#gallery">Gallery</a>
+      <a href="#specs">Specs</a>
+      <a href="#preorder">Pre-order</a>
+    </nav>
+
+    <p class="footer__copy">© <span id="year">2026</span> WipidiM. All rights reserved.</p>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
