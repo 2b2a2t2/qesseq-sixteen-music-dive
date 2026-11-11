@@ -160,8 +160,7 @@ const en: Copy = {
       { label: "Display", value: "Built-in status screen" },
       { label: "MIDI", value: "USB-MIDI + 5-pin DIN input" },
       { label: "Clock", value: "Internal master or external MIDI sync" },
-      { label: "Processor", value: "Teensy 4.1, 600 MHz" },
-      { label: "Firmware", value: "Open source, updatable over USB" },
+      { label: "Firmware", value: "Updatable over USB" },
     ],
   },
   preorder: {
@@ -293,8 +292,7 @@ const fr: Copy = {
       { label: "Écran", value: "Écran d'état intégré" },
       { label: "MIDI", value: "USB-MIDI + entrée DIN 5 broches" },
       { label: "Horloge", value: "Maître interne ou synchro MIDI externe" },
-      { label: "Processeur", value: "Teensy 4.1, 600 MHz" },
-      { label: "Firmware", value: "Open source, mise à jour par USB" },
+      { label: "Firmware", value: "Mise à jour par USB" },
     ],
   },
   preorder: {
