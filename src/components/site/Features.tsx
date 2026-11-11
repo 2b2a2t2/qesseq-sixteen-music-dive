@@ -1,6 +1,6 @@
-import top from "@/assets/qesseq16-top.jpg.asset.json";
-import angle from "@/assets/qesseq16-angle.jpg.asset.json";
-import front from "@/assets/qesseq16-front.jpg.asset.json";
+import top from "@/assets/qesseq16-top-cutout.webp";
+import angle from "@/assets/qesseq16-angle-cutout.webp";
+import front from "@/assets/qesseq16-front-cutout.webp";
 import type { Copy } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { StepGrid } from "./StepGrid";
@@ -12,24 +12,26 @@ function Visual({ id }: { id: string }) {
     case "sequence":
       return <StepGrid />;
     case "generate":
-      return <CroppedShot src={top.url} alt="QESSEQ 16 seen from above, screen showing generator controls" className="aspect-[4/3]" />;
+      return <CroppedShot src={top} alt="QESSEQ 16 seen from above, screen showing generator controls" className="aspect-[4/3]" />;
     case "follow":
       return <FollowChain />;
     case "play":
       return (
         <CroppedShot
-          src={angle.url}
+          src={angle}
           alt="Close-up of the QESSEQ 16 illuminated pads"
           className="aspect-[4/3]"
-          imgClassName="scale-[1.7] origin-[65%_70%]"
+          fade
+          imgClassName="scale-[1.7] origin-[65%_75%]"
         />
       );
     case "control":
       return (
         <CroppedShot
-          src={front.url}
+          src={front}
           alt="Close-up of the eight blue-lit encoders"
           className="aspect-[4/3]"
+          fade
           imgClassName="scale-[2] origin-[85%_30%]"
         />
       );

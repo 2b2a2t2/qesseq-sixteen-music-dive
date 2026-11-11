@@ -1,4 +1,4 @@
-import front from "@/assets/qesseq16-front.jpg.asset.json";
+import front from "@/assets/qesseq16-front-cutout.webp";
 import type { Copy } from "@/lib/i18n";
 import { Button } from "@/components/ui/button";
 
@@ -30,11 +30,11 @@ export function Hero({ copy }: { copy: Copy }) {
       <div className="relative mx-auto mt-16 max-w-6xl px-5 md:mt-20 md:px-8">
         <div className="relative led-reflection animate-float">
           <img
-            src={front.url}
+            src={front}
             alt="QESSEQ 16 MIDI sequencer, front view with glowing pads and encoders"
-            width={1448}
-            height={1086}
-            className="relative w-full rounded-[2rem] shadow-card"
+            width={1263}
+            height={714}
+            className="relative w-full drop-shadow-[0_40px_50px_oklch(0_0_0/0.65)]"
             fetchPriority="high"
           />
         </div>
