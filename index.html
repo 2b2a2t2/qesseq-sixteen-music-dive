@@ -158,9 +158,9 @@
             <div class="stepgrid__scroll">
               <div class="panelpanel">
                 <div class="panel__row panel__row--top" role="group" aria-label="Top row: ENC, SEQ and KEY mode pads, PLAY and REC, then the five black keys">
-                  <span class="panel__mode" style="--mode:var(--mode-enc);grid-column:4">ENC</span>
-                  <span class="panel__mode is-on" style="--mode:var(--mode-seq);grid-column:5">SEQ</span>
-                  <span class="panel__mode" style="--mode:var(--mode-key);grid-column:7">KEY</span>
+                  <button type="button" class="panel__mode" data-mode="enc" style="--mode:var(--mode-enc);grid-column:4" aria-pressed="false">ENC</button>
+                  <button type="button" class="panel__mode is-on" data-mode="seq" style="--mode:var(--mode-seq);grid-column:5" aria-pressed="true">SEQ</button>
+                  <button type="button" class="panel__mode" data-mode="key" style="--mode:var(--mode-key);grid-column:7" aria-pressed="false">KEY</button>
                   <span class="panel__pad" style="grid-column:8">PLAY</span>
                   <span class="panel__pad" style="grid-column:9">REC</span>
                   <span class="panel__key panel__key--black" style="grid-column:11">C♯</span>

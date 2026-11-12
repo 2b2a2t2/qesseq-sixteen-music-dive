@@ -353,14 +353,16 @@ ol,ul{margin:0;padding:0;list-style:none}
 .stepgrid{
   background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius-3xl);padding:clamp(18px,2.4vw,28px);
-  box-shadow:var(--shadow-card);
+  box-shadow:var(--shadow-card);--card-mode:var(--mode-seq);
 }
 .stepgrid__bar,.arp__bar,.prog__bar{
   display:flex;align-items:center;justify-content:space-between;
   font-family:var(--font-mono);font-size:.65rem;letter-spacing:.2em;
   text-transform:uppercase;color:var(--muted-foreground);margin-bottom:18px;
 }
-.stepgrid__step{color:var(--primary);font-weight:600}
+.stepgrid[data-mode="enc"]{--card-mode:var(--mode-enc)}
+.stepgrid[data-mode="key"]{--card-mode:var(--mode-key)}
+.stepgrid__step{color:var(--card-mode);font-weight:600}
 .stepgrid__scroll{
   overflow-x:auto;overscroll-behavior-x:contain;
   scrollbar-width:thin;
@@ -462,6 +464,7 @@ ol,ul{margin:0;padding:0;list-style:none}
   box-shadow:0 4px 10px rgba(0,0,0,.45);
 }
 .panel__mode{
+  cursor:pointer;font-family:inherit;
   border:1px solid color-mix(in oklab,var(--mode) 30%,transparent);
   background:color-mix(in oklab,var(--mode) 7%,transparent);
   color:color-mix(in oklab,var(--mode) 60%,var(--muted-foreground));

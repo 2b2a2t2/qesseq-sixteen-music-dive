@@ -60,7 +60,13 @@ if ('IntersectionObserver' in window) {
   const trackLabel = document.getElementById('stepTrack');
   const chanBar = document.getElementById('stepChans');
   const voiceBar = document.getElementById('stepVoices');
+  const gridCard = document.getElementById('stepgrid');
   if (!host || !chanBar || !voiceBar) return;
+
+  // the three mode pads tint the card: ENC purple, KEY teal, SEQ keeps the
+  // per-track colours the sequencer actually lights
+  const modePads = [...document.querySelectorAll('#stepgrid .panel__mode')];
+  let mode = 'seq';
 
   // CH 1 is one DRUM track: the kit voices each keep their own 16-step line.
   // CH 2 POLY, CH 3 POLY SKANK following CH 2's progression, CH 4 MONO bass.
@@ -126,11 +132,30 @@ if ('IntersectionObserver' in window) {
     });
   }
 
+  function lineColor() {
+    return mode === 'seq' ? voicesOf(TRACKS[current])[voice].color : 'var(--mode-' + mode + ')';
+  }
+
+  function applyMode(m) {
+    mode = m;
+    if (gridCard) gridCard.dataset.mode = m;
+    host.style.setProperty('--pad', lineColor());
+    modePads.forEach(b => {
+      const on = b.dataset.mode === m;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+  }
+
+  modePads.forEach(b => {
+    b.addEventListener('click', () => { pinned = true; applyMode(b.dataset.mode); });
+  });
+
   function buildLine() {
     const t = TRACKS[current];
     const v = voicesOf(t)[voice];
     host.innerHTML = '';
-    host.style.setProperty('--pad', v.color);
+    host.style.setProperty('--pad', lineColor());
     host.setAttribute('aria-label', v.name + ' 16 steps');
     cells = [];
     for (let c = 0; c < 16; c++) {
@@ -188,6 +213,7 @@ if ('IntersectionObserver' in window) {
     else selectTrack((current + 1) % TRACKS.length, 0);
   }
 
+  if (gridCard) gridCard.dataset.mode = mode;
   selectTrack(0, 0);
 
   // show the "swipe" hint only when the pads overflow their card
