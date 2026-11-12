@@ -156,30 +156,44 @@
             <div class="stepgrid__chans" id="stepChans" role="tablist" aria-label="Tracks"></div>
             <div class="stepgrid__voices" id="stepVoices" role="tablist" aria-label="Drum voices" hidden></div>
             <div class="stepgrid__scroll">
-              <div class="stepgrid__line" id="stepRows" role="group" aria-label="KICK 16 steps"></div>
+              <div class="panelpanel">
+                <div class="panel__row" role="group" aria-label="Top row: ENC, SEQ and KEY mode pads, PLAY and REC, then the five black keys">
+                  <span class="panel__mode" style="--mode:var(--mode-enc);grid-column:4">ENC</span>
+                  <span class="panel__mode is-on" style="--mode:var(--mode-seq);grid-column:5">SEQ</span>
+                  <span class="panel__mode" style="--mode:var(--mode-key);grid-column:7">KEY</span>
+                  <span class="panel__pad" style="grid-column:8">PLAY</span>
+                  <span class="panel__pad" style="grid-column:9">REC</span>
+                  <span class="panel__key panel__key--black" style="grid-column:11">C♯</span>
+                  <span class="panel__key panel__key--black" style="grid-column:12">D♯</span>
+                  <span class="panel__key panel__key--black" style="grid-column:14">F♯</span>
+                  <span class="panel__key panel__key--black" style="grid-column:15">G♯</span>
+                  <span class="panel__key panel__key--black" style="grid-column:16">A♯</span>
+                </div>
+                <div class="panel__row" role="group" aria-label="Middle row: PREV, NEXT, M1, M2, M3, F1 to F4, then the seven white keys">
+                  <span class="panel__pad" style="grid-column:1">PREV</span>
+                  <span class="panel__pad" style="grid-column:2">NEXT</span>
+                  <span class="panel__pad" style="grid-column:3">M1</span>
+                  <span class="panel__pad" style="grid-column:4">M2</span>
+                  <span class="panel__pad" style="grid-column:5">M3</span>
+                  <span class="panel__pad" style="grid-column:6">F1</span>
+                  <span class="panel__pad" style="grid-column:7">F2</span>
+                  <span class="panel__pad" style="grid-column:8">F3</span>
+                  <span class="panel__pad" style="grid-column:9">F4</span>
+                  <span class="panel__key" style="grid-column:10">C</span>
+                  <span class="panel__key" style="grid-column:11">D</span>
+                  <span class="panel__key" style="grid-column:12">E</span>
+                  <span class="panel__key" style="grid-column:13">F</span>
+                  <span class="panel__key" style="grid-column:14">G</span>
+                  <span class="panel__key" style="grid-column:15">A</span>
+                  <span class="panel__key" style="grid-column:16">B</span>
+                </div>
+                <div class="stepgrid__line" id="stepRows" role="group" aria-label="KICK 16 steps"></div>
+              </div>
             </div>
             <div class="arp__meta">
               <span>STEP <b id="stepCount">01 / 16</b></span>
               <span>SPEED <b>1/16</b></span>
               <span>TRACKS <b>16</b></span>
-            </div>
-            <div class="panel" role="group" aria-label="Panel buttons: PREV, NEXT, M1, M2, M3, F1–F4, and the ENC, SEQ and KEY mode buttons">
-              <div class="panel__row">
-                <span class="panel__pad">PREV</span>
-                <span class="panel__pad">NEXT</span>
-                <span class="panel__pad">M1</span>
-                <span class="panel__pad">M2</span>
-                <span class="panel__pad">M3</span>
-                <span class="panel__pad">F1</span>
-                <span class="panel__pad">F2</span>
-                <span class="panel__pad">F3</span>
-                <span class="panel__pad">F4</span>
-              </div>
-              <div class="panel__row panel__row--modes">
-                <span class="panel__mode" style="--mode:var(--mode-enc)">ENC</span>
-                <span class="panel__mode is-on" style="--mode:var(--mode-seq)">SEQ</span>
-                <span class="panel__mode" style="--mode:var(--mode-key)">KEY</span>
-              </div>
             </div>
             <p class="stepgrid__hint">▸ tap a pad to toggle it · CH 1 is the kit, one line per voice<span class="only-narrow"> · swipe →</span></p>
           </div>
