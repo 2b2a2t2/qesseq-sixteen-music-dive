@@ -142,5 +142,26 @@ drop everything else to transparent, keep all 48 frames at 30 ms.
 
 ## Deploy
 
-Upload the whole folder to any static host — Netlify, Vercel, GitHub Pages,
-Cloudflare Pages, or plain shared hosting. No server required.
+The live site is **GitHub Pages**, serving this repository's root on the custom
+domain **wipidim.com** (the `CNAME` file does that). There is no build step:
+**every push to `main` publishes the site** — Pages rebuilds within a minute or
+two and wipidim.com serves the new files. `www.wipidim.com` 301-redirects to the
+apex, and HTTPS is provided by Pages.
+
+After a push, check it:
+
+```bash
+curl -sI https://wipidim.com/ | head -3      # 200, server: GitHub.com
+curl -s https://wipidim.com/ | grep '<title>'
+```
+
+Pages is set up in the repository settings (**Settings → Pages → Deploy from a
+branch → `main` / root**). The `CNAME` file must keep naming `wipidim.com` —
+deleting it takes the domain offline. If Pages is ever switched off, the folder
+is still plain static HTML and any host works (Netlify, Vercel, Cloudflare
+Pages); no server is required.
+
+The same files are also published to a Freebuff Sites project ("QESSEQ 16 —
+WipidiM") as preview and production environments for review, but **wipidim.com
+stays pointed at GitHub Pages**. Moving the domain to that host would mean
+registering it there and changing the DNS records.
