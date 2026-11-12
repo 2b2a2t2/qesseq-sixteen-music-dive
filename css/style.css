@@ -438,6 +438,27 @@ ol,ul{margin:0;padding:0;list-style:none}
 /* the panel rows above the step line: 16 columns wide, as on the device */
 .panelpanel{display:flex;flex-direction:column;gap:6px}
 .panel__row{--panelgap:6px;display:grid;grid-template-columns:repeat(16,minmax(24px,1fr));gap:var(--panelgap)}
+/* the eight encoders, one knob per two columns */
+.panel__row--enc{margin-bottom:4px}
+.panel__enc{
+  justify-self:center;position:relative;width:70%;aspect-ratio:1;border-radius:50%;
+  display:grid;place-items:center;
+  border:1px solid color-mix(in oklab,var(--mode-enc) 42%,transparent);
+  background:
+    radial-gradient(circle at 50% 34%,color-mix(in oklab,var(--mode-enc) 20%,transparent),transparent 62%),
+    color-mix(in oklab,var(--background) 74%,transparent);
+  box-shadow:0 0 12px color-mix(in oklab,var(--mode-enc) 26%,transparent);
+}
+.panel__enc::before{
+  content:"";width:60%;aspect-ratio:1;border-radius:50%;
+  border:1px solid color-mix(in oklab,var(--foreground) 18%,transparent);
+  background:color-mix(in oklab,var(--surface) 90%,transparent);
+}
+.panel__enc::after{
+  content:"";position:absolute;top:14%;width:2px;height:20%;border-radius:1px;
+  background:color-mix(in oklab,var(--mode-enc) 85%,transparent);
+  box-shadow:0 0 6px color-mix(in oklab,var(--mode-enc) 70%,transparent);
+}
 /* the top row straddles the gaps between the pads below it, black-key style */
 .panel__row--top > *{transform:translateX(calc(-50% - var(--panelgap) / 2));z-index:2}
 .panel__pad,.panel__key,.panel__mode{
