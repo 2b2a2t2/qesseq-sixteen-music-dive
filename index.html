@@ -151,9 +151,10 @@
           <div class="stepgrid" id="stepgrid">
             <div class="stepgrid__bar">
               <span>SEQUENCER 1</span>
-              <span class="stepgrid__step" id="stepTrack">CH 1 · KICK</span>
+              <span class="stepgrid__step" id="stepTrack">CH 1 · DRUM · KICK</span>
             </div>
             <div class="stepgrid__chans" id="stepChans" role="tablist" aria-label="Tracks"></div>
+            <div class="stepgrid__voices" id="stepVoices" role="tablist" aria-label="Drum voices" hidden></div>
             <div class="stepgrid__scroll">
               <div class="stepgrid__line" id="stepRows" role="group" aria-label="KICK 16 steps"></div>
             </div>
@@ -162,7 +163,7 @@
               <span>SPEED <b>1/16</b></span>
               <span>TRACKS <b>16</b></span>
             </div>
-            <p class="stepgrid__hint">▸ tap a pad to toggle it · pick a track to see its line<span class="only-narrow"> · swipe →</span></p>
+            <p class="stepgrid__hint">▸ tap a pad to toggle it · CH 1 is the kit, one line per voice<span class="only-narrow"> · swipe →</span></p>
           </div>
         </div>
       </article>
@@ -192,20 +193,24 @@
               <span>KEYBOARD 1</span>
               <span class="scale__mode">D DORIAN</span>
             </div>
-            <ol class="scale__keys" aria-label="1 octave of D Dorian lit on the pads">
-              <li class="scale__key is-root"><b>I</b><span>D</span></li>
-              <li class="scale__key is-flat"><b>·</b><span>D♯</span></li>
-              <li class="scale__key is-on"><b>II</b><span>E</span></li>
-              <li class="scale__key is-on"><b>♭III</b><span>F</span></li>
-              <li class="scale__key is-flat"><b>·</b><span>F♯</span></li>
-              <li class="scale__key is-on"><b>IV</b><span>G</span></li>
-              <li class="scale__key is-flat"><b>·</b><span>G♯</span></li>
-              <li class="scale__key is-on"><b>V</b><span>A</span></li>
-              <li class="scale__key is-flat"><b>·</b><span>A♯</span></li>
-              <li class="scale__key is-on"><b>VI</b><span>B</span></li>
-              <li class="scale__key is-on"><b>♭VII</b><span>C</span></li>
-              <li class="scale__key is-flat"><b>·</b><span>C♯</span></li>
-            </ol>
+            <div class="keys" role="group" aria-label="One octave of D Dorian lit on the pads: 7 white keys with the 5 black keys raised above them">
+              <div class="keys__white">
+                <div class="scale__key is-on"><b>♭VII</b><span>C</span></div>
+                <div class="scale__key is-on is-root"><b>I</b><span>D</span></div>
+                <div class="scale__key is-on"><b>II</b><span>E</span></div>
+                <div class="scale__key is-on"><b>♭III</b><span>F</span></div>
+                <div class="scale__key is-on"><b>IV</b><span>G</span></div>
+                <div class="scale__key is-on"><b>V</b><span>A</span></div>
+                <div class="scale__key is-on"><b>VI</b><span>B</span></div>
+              </div>
+              <div class="keys__black" aria-hidden="true">
+                <div class="scale__key scale__key--black" style="grid-column:2"><span>C♯</span></div>
+                <div class="scale__key scale__key--black" style="grid-column:3"><span>D♯</span></div>
+                <div class="scale__key scale__key--black" style="grid-column:5"><span>F♯</span></div>
+                <div class="scale__key scale__key--black" style="grid-column:6"><span>G♯</span></div>
+                <div class="scale__key scale__key--black" style="grid-column:7"><span>A♯</span></div>
+              </div>
+            </div>
             <div class="arp__meta">
               <span>DEGREES <b>I · II · ♭III · IV · V · VI · ♭VII</b></span>
               <span>TENSION <b>♭VII · II</b></span>

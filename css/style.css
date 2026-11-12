@@ -372,16 +372,21 @@ ol,ul{margin:0;padding:0;list-style:none}
 .only-narrow{display:none}
 .stepgrid.is-scrollable .only-narrow{display:inline}
 /* one 16-step line, switched per track — as on the panel */
-.stepgrid__chans{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px}
+.stepgrid__chans{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+.stepgrid__voices{display:flex;flex-wrap:wrap;gap:6px;margin:-2px 0 16px}
+.stepgrid__voices[hidden]{display:none}
 .stepgrid__chan{
-  display:inline-flex;align-items:center;justify-content:center;
-  padding:6px 13px;border-radius:100px;cursor:pointer;
+  display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;
+  padding:6px 13px;border-radius:100px;cursor:pointer;line-height:1.15;
   border:1px solid color-mix(in oklab,var(--pad) 26%,transparent);
   background:color-mix(in oklab,var(--background) 60%,transparent);
   font-family:var(--font-mono);font-size:.58rem;font-weight:600;
   letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground);
   transition:color .2s,border-color .2s,background .2s,box-shadow .2s;
 }
+.stepgrid__chan b{font-size:.6rem;font-weight:600;letter-spacing:.14em}
+.stepgrid__chan small{font-size:.46rem;font-weight:500;letter-spacing:.14em;opacity:.7}
+.stepgrid__chan.is-voice{padding:5px 11px;font-size:.55rem;letter-spacing:.16em}
 .stepgrid__chan:hover{color:var(--foreground);border-color:color-mix(in oklab,var(--pad) 50%,transparent)}
 .stepgrid__chan[data-on="1"]{
   color:var(--foreground);
@@ -516,7 +521,7 @@ ol,ul{margin:0;padding:0;list-style:none}
   box-shadow:var(--shadow-card);
 }
 .scale__mode{color:var(--mode-key);font-weight:600}
-.scale__keys{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:5px}
+
 .scale__key{
   min-width:0;
   display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:5px;
@@ -541,6 +546,24 @@ ol,ul{margin:0;padding:0;list-style:none}
   box-shadow:0 0 20px color-mix(in oklab,var(--led-violet) 45%,transparent);
 }
 .scale__key.is-root b{color:var(--led-violet)}
+
+/* keyboard: 7 white keys with the 5 black keys raised above them, as on the panel */
+.keys{position:relative}
+.keys__white{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.keys__black{
+  position:absolute;inset:0 0 auto;
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;
+}
+.keys__white .scale__key{aspect-ratio:1/1.5;padding-bottom:12px}
+.scale__key--black{
+  justify-self:start;align-self:start;transform:translateX(-50%);width:64%;
+  aspect-ratio:1/1.35;justify-content:center;gap:0;padding:0;font-size:.5rem;
+  border-radius:6px;z-index:2;
+  border-color:color-mix(in oklab,var(--foreground) 16%,transparent);
+  background:color-mix(in oklab,#080a0e 84%,var(--surface));
+  color:color-mix(in oklab,var(--muted-foreground) 90%,transparent);
+  box-shadow:0 8px 16px rgba(0,0,0,.5);
+}
 
 /* ============ PROGRESSION VISUAL ============ */
 .prog__chords{
@@ -799,9 +822,10 @@ ol,ul{margin:0;padding:0;list-style:none}
   .hero__cta .btn{width:100%}
   .gallery__thumbs{grid-template-columns:1fr}
   .prog__chords{grid-template-columns:repeat(2,1fr)}
-  .scale__keys{grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
-  .scale__key{padding:7px 2px 8px;border-radius:7px;font-size:.52rem}
-  .scale__key b{font-size:.58rem}
+  .keys__white,.keys__black{gap:4px}
+  .scale__key{padding:7px 1px 8px;border-radius:7px;font-size:.5rem}
+  .keys__white .scale__key b{display:none}
+  .scale__key--black{width:68%;padding:0;font-size:.44rem}
   .arp__step{min-width:44px;padding:8px 6px}
   .form{padding:24px 18px}
   .footer__brand div{text-align:center}

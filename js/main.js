@@ -59,21 +59,30 @@ if ('IntersectionObserver' in window) {
   const counter = document.getElementById('stepCount');
   const trackLabel = document.getElementById('stepTrack');
   const chanBar = document.getElementById('stepChans');
-  if (!host || !chanBar) return;
+  const voiceBar = document.getElementById('stepVoices');
+  if (!host || !chanBar || !voiceBar) return;
 
+  // CH 1 is one DRUM track: the kit voices each keep their own 16-step line.
+  // CH 2 POLY, CH 3 POLY SKANK following CH 2's progression, CH 4 MONO bass.
   const TRACKS = [
-    { name: 'KICK',  ch: 1, color: 'var(--led-red)',    pattern: 'x...x...x...x..x' },
-    { name: 'SNARE', ch: 2, color: 'var(--led-violet)', pattern: '....x.......x...' },
-    { name: 'HAT',   ch: 3, color: 'var(--led-white)',  pattern: '..x...x...x...xx' },
-    { name: 'BASS',  ch: 4, color: 'var(--led-blue)',   pattern: 'x..x..x...x.x...' },
-    { name: 'CHORD', ch: 5, color: 'var(--led-green)',  pattern: 'x.......x...x...' },
-    { name: 'LEAD',  ch: 6, color: 'var(--led-cyan)',   pattern: '..x.x....x.x..x.' }
+    { ch: 1, type: 'DRUM', color: 'var(--led-red)', voices: [
+      { name: 'KICK',  color: 'var(--led-red)',    pattern: 'x...x...x...x..x' },
+      { name: 'SNARE', color: 'var(--led-white)',  pattern: '....x.......x...' },
+      { name: 'HAT',   color: 'var(--led-cyan)',   pattern: '..x...x...x...xx' },
+      { name: 'PERC',  color: 'var(--led-violet)', pattern: '.....x..x..x....' }
+    ] },
+    { ch: 2, type: 'POLY', name: 'CHORDS', color: 'var(--led-blue)',  pattern: 'x.......x...x...' },
+    { ch: 3, type: 'POLY', name: 'SKANK',  color: 'var(--led-green)', follow: 'CH 2', pattern: '..x.x..x..x.x..x' },
+    { ch: 4, type: 'MONO', name: 'BASS',   color: 'var(--led-teal)',  pattern: 'x..x..x...x.x...' }
   ];
 
-  const state = TRACKS.map(t => t.pattern.split('').map(c => c === 'x'));
+  const voicesOf = t => t.voices || [{ name: t.name, color: t.color, pattern: t.pattern }];
+  const state = TRACKS.map(t => voicesOf(t).map(v => v.pattern.split('').map(c => c === 'x')));
   const tabs = [];
+  const voiceTabs = [];
   let cells = [];
   let current = 0;
+  let voice = 0;
   let step = 0;
   let pinned = false;
 
@@ -82,28 +91,56 @@ if ('IntersectionObserver' in window) {
     b.type = 'button';
     b.className = 'stepgrid__chan';
     b.style.setProperty('--pad', t.color);
-    b.textContent = 'CH ' + t.ch;
+    b.innerHTML = '<b>CH ' + t.ch + '</b><small>' + t.type + (t.follow ? ' ← ' + t.follow : '') + '</small>';
     b.setAttribute('role', 'tab');
-    b.setAttribute('aria-label', t.name + ' — channel ' + t.ch);
-    b.addEventListener('click', () => { pinned = true; selectTrack(i); });
+    b.setAttribute('aria-label', 'Channel ' + t.ch + ' — ' + t.type + ' track');
+    b.addEventListener('click', () => { pinned = true; selectTrack(i, 0); });
     chanBar.appendChild(b);
     tabs[i] = b;
   });
 
+  function renderVoices() {
+    voiceBar.innerHTML = '';
+    voiceTabs.length = 0;
+    const list = voicesOf(TRACKS[current]);
+    voiceBar.hidden = list.length < 2;
+    if (list.length < 2) return;
+    list.forEach((v, i) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'stepgrid__chan is-voice';
+      b.style.setProperty('--pad', v.color);
+      b.textContent = v.name;
+      b.setAttribute('role', 'tab');
+      b.setAttribute('aria-label', v.name + ' voice, channel ' + TRACKS[current].ch);
+      b.addEventListener('click', () => { pinned = true; selectVoice(i); });
+      voiceBar.appendChild(b);
+      voiceTabs[i] = b;
+    });
+  }
+
+  function markVoice() {
+    voiceTabs.forEach((b, n) => {
+      b.dataset.on = n === voice ? '1' : '0';
+      b.setAttribute('aria-selected', String(n === voice));
+    });
+  }
+
   function buildLine() {
     const t = TRACKS[current];
+    const v = voicesOf(t)[voice];
     host.innerHTML = '';
-    host.style.setProperty('--pad', t.color);
-    host.setAttribute('aria-label', t.name + ' 16 steps');
+    host.style.setProperty('--pad', v.color);
+    host.setAttribute('aria-label', v.name + ' 16 steps');
     cells = [];
     for (let c = 0; c < 16; c++) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'stepgrid__cell' + (c % 4 === 0 ? ' is-beat' : '');
-      b.setAttribute('aria-label', t.name + ' step ' + (c + 1));
+      b.setAttribute('aria-label', v.name + ' step ' + (c + 1));
       b.addEventListener('click', () => {
         pinned = true;
-        state[current][c] = !state[current][c];
+        state[current][voice][c] = !state[current][voice][c];
         paint();
       });
       host.appendChild(b);
@@ -111,28 +148,47 @@ if ('IntersectionObserver' in window) {
     }
   }
 
-  function selectTrack(i) {
+  function selectVoice(i) {
+    voice = i;
+    buildLine();
+    markVoice();
+    paint();
+  }
+
+  function selectTrack(i, v) {
     current = i;
+    voice = v || 0;
+    renderVoices();
     buildLine();
     tabs.forEach((b, n) => {
       b.dataset.on = n === i ? '1' : '0';
       b.setAttribute('aria-selected', String(n === i));
     });
+    markVoice();
     paint();
   }
 
   function paint() {
     const t = TRACKS[current];
+    const v = voicesOf(t)[voice];
     cells.forEach((b, c) => {
-      b.dataset.on = state[current][c] ? '1' : '0';
-      b.setAttribute('aria-pressed', String(state[current][c]));
-      b.classList.toggle('is-hit', state[current][c] && c === step);
+      b.dataset.on = state[current][voice][c] ? '1' : '0';
+      b.setAttribute('aria-pressed', String(state[current][voice][c]));
+      b.classList.toggle('is-hit', state[current][voice][c] && c === step);
     });
     counter.textContent = String(step + 1).padStart(2, '0') + ' / 16';
-    trackLabel.textContent = 'CH ' + t.ch + ' · ' + t.name;
+    trackLabel.textContent = 'CH ' + t.ch + ' · ' + t.type + ' · ' + v.name +
+      (t.follow ? ' ← ' + t.follow : '');
   }
 
-  selectTrack(0);
+  // the panel walks the tracks; CH 1 stops on each kit voice on the way
+  function nextTrack() {
+    const list = voicesOf(TRACKS[current]);
+    if (voice + 1 < list.length) selectVoice(voice + 1);
+    else selectTrack((current + 1) % TRACKS.length, 0);
+  }
+
+  selectTrack(0, 0);
 
   // show the "swipe" hint only when the pads overflow their card
   const scrollBox = document.querySelector('.stepgrid__scroll');
@@ -149,7 +205,7 @@ if ('IntersectionObserver' in window) {
     const tick = () => {
       step = (step + 1) % 16;
       // the line follows the track, the way the panel does
-      if (step === 0 && !pinned) selectTrack((current + 1) % TRACKS.length);
+      if (step === 0 && !pinned) nextTrack();
       paint();
     };
     const io = new IntersectionObserver(entries => {
