@@ -435,7 +435,9 @@ ol,ul{margin:0;padding:0;list-style:none}
 
 /* the panel rows above the step line: 16 columns wide, as on the device */
 .panelpanel{display:flex;flex-direction:column;gap:6px}
-.panel__row{display:grid;grid-template-columns:repeat(16,minmax(24px,1fr));gap:6px}
+.panel__row{--panelgap:6px;display:grid;grid-template-columns:repeat(16,minmax(24px,1fr));gap:var(--panelgap)}
+/* the top row straddles the gaps between the pads below it, black-key style */
+.panel__row--top > *{transform:translateX(calc(-50% - var(--panelgap) / 2));z-index:2}
 .panel__pad,.panel__key,.panel__mode{
   display:flex;align-items:center;justify-content:center;
   min-width:0;height:clamp(20px,2.2vw,26px);padding:0 2px;border-radius:6px;
@@ -454,7 +456,6 @@ ol,ul{margin:0;padding:0;list-style:none}
   color:color-mix(in oklab,var(--foreground) 78%,transparent);
 }
 .panel__key--black{
-  transform:translateX(-50%);z-index:2;
   border-color:color-mix(in oklab,var(--foreground) 16%,transparent);
   background:color-mix(in oklab,#080a0e 84%,var(--surface));
   color:color-mix(in oklab,var(--muted-foreground) 92%,transparent);
@@ -860,7 +861,7 @@ ol,ul{margin:0;padding:0;list-style:none}
   .hero__cta .btn{width:100%}
   .gallery__thumbs{grid-template-columns:1fr}
   .prog__chords{grid-template-columns:repeat(2,1fr)}
-  .panel__row{gap:5px}
+  .panel__row{--panelgap:5px}
   .panel__pad,.panel__key,.panel__mode{height:19px;font-size:.36rem;letter-spacing:0}
   .keys__white,.keys__black{gap:4px}
   .scale__key{padding:7px 1px 8px;border-radius:7px;font-size:.5rem}
