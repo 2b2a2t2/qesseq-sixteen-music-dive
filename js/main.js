@@ -61,6 +61,8 @@ if ('IntersectionObserver' in window) {
   const chanBar = document.getElementById('stepChans');
   const voiceBar = document.getElementById('stepVoices');
   const gridCard = document.getElementById('stepgrid');
+  const screenTrack = document.getElementById('screenTrack');
+  const screenStep = document.getElementById('screenStep');
   if (!host || !chanBar || !voiceBar) return;
 
   // the three mode pads tint the card: ENC purple, KEY teal, SEQ keeps the
@@ -202,8 +204,12 @@ if ('IntersectionObserver' in window) {
       b.classList.toggle('is-hit', state[current][voice][c] && c === step);
     });
     counter.textContent = String(step + 1).padStart(2, '0') + ' / 16';
-    trackLabel.textContent = 'CH ' + t.ch + ' · ' + t.type + ' · ' + v.name +
+    const label = 'CH ' + t.ch + ' · ' + t.type + ' · ' + v.name +
       (t.follow ? ' ← ' + t.follow : '');
+    trackLabel.textContent = label;
+    // the little screen shows the same page
+    if (screenTrack) screenTrack.textContent = label;
+    if (screenStep) screenStep.textContent = String(step + 1).padStart(2, '0');
   }
 
   // the panel walks the tracks; CH 1 stops on each kit voice on the way

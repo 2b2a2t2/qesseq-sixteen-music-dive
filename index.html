@@ -157,15 +157,22 @@
             <div class="stepgrid__voices" id="stepVoices" role="tablist" aria-label="Drum voices" hidden></div>
             <div class="stepgrid__scroll">
               <div class="panelpanel">
-                <div class="panel__row panel__row--enc" role="group" aria-label="The eight encoders">
-                  <span class="panel__enc" style="grid-column:1 / span 2"></span>
-                  <span class="panel__enc" style="grid-column:3 / span 2"></span>
-                  <span class="panel__enc" style="grid-column:5 / span 2"></span>
-                  <span class="panel__enc" style="grid-column:7 / span 2"></span>
-                  <span class="panel__enc" style="grid-column:9 / span 2"></span>
-                  <span class="panel__enc" style="grid-column:11 / span 2"></span>
-                  <span class="panel__enc" style="grid-column:13 / span 2"></span>
-                  <span class="panel__enc" style="grid-column:15 / span 2"></span>
+                <div class="panel__top">
+                  <div class="panel__screen" role="group" aria-label="Display, showing the sequencer page">
+                    <div class="panel__screen-head"><span>SEQUENCER</span><b>SEQ</b></div>
+                    <p class="panel__screen-main" id="screenTrack">CH 1 · DRUM · KICK</p>
+                    <p class="panel__screen-foot"><span>STEP <b id="screenStep">01</b></span><span>SPEED 1/16</span></p>
+                  </div>
+                  <div class="panel__encs" role="group" aria-label="The eight encoders, four by two">
+                    <span class="panel__enc"></span>
+                    <span class="panel__enc"></span>
+                    <span class="panel__enc"></span>
+                    <span class="panel__enc"></span>
+                    <span class="panel__enc"></span>
+                    <span class="panel__enc"></span>
+                    <span class="panel__enc"></span>
+                    <span class="panel__enc"></span>
+                  </div>
                 </div>
                 <div class="panel__row panel__row--top" role="group" aria-label="Top row: ENC, SEQ and KEY mode pads, PLAY and REC, then the five black keys">
                   <button type="button" class="panel__mode" data-mode="enc" style="--mode:var(--mode-enc);grid-column:4" aria-pressed="false">ENC</button>

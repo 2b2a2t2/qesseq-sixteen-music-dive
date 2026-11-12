@@ -438,10 +438,43 @@ ol,ul{margin:0;padding:0;list-style:none}
 /* the panel rows above the step line: 16 columns wide, as on the device */
 .panelpanel{display:flex;flex-direction:column;gap:6px}
 .panel__row{--panelgap:6px;display:grid;grid-template-columns:repeat(16,minmax(24px,1fr));gap:var(--panelgap)}
-/* the eight encoders, one knob per two columns */
-.panel__row--enc{margin-bottom:4px}
+/* top of the panel: the display on the left, the 4×2 encoders to its right */
+.panel__top{
+  display:grid;grid-template-columns:repeat(16,minmax(24px,1fr));gap:6px;
+  align-items:stretch;margin-bottom:6px;
+}
+.panel__screen{
+  grid-column:1 / span 7;
+  display:flex;flex-direction:column;justify-content:space-between;gap:4px;
+  padding:7px 9px;border-radius:9px;
+  border:1px solid color-mix(in oklab,var(--card-mode) 34%,transparent);
+  background:
+    radial-gradient(120% 90% at 50% 0%,color-mix(in oklab,var(--card-mode) 14%,transparent),transparent 70%),
+    color-mix(in oklab,#05070b 88%,var(--surface));
+  box-shadow:inset 0 0 18px color-mix(in oklab,var(--card-mode) 18%,transparent);
+  font-family:var(--font-mono);overflow:hidden;
+}
+.panel__screen-head{
+  display:flex;justify-content:space-between;
+  font-size:.4rem;letter-spacing:.14em;text-transform:uppercase;
+  color:color-mix(in oklab,var(--card-mode) 75%,var(--muted-foreground));
+}
+.panel__screen-main{
+  margin:0;font-size:.5rem;font-weight:600;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--foreground);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.panel__screen-foot{
+  display:flex;justify-content:space-between;margin:0;
+  font-size:.4rem;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted-foreground);
+}
+.panel__encs{
+  grid-column:10 / span 7;
+  display:grid;grid-template-columns:repeat(4,1fr);gap:5px;align-content:start;
+}
 .panel__enc{
-  justify-self:center;position:relative;width:70%;aspect-ratio:1;border-radius:50%;
+  justify-self:center;position:relative;width:74%;aspect-ratio:1;border-radius:50%;
   display:grid;place-items:center;
   border:1px solid color-mix(in oklab,var(--mode-enc) 42%,transparent);
   background:
