@@ -58,27 +58,38 @@ Update the captions/alt text in `index.html` together if you ever swap these.
 | # | Section | Contents |
 |---|---------|----------|
 | — | Header | spinning WipidiM record logo, nav, Pre-order CTA, hamburger + overlay menu |
-| 1 | Hero | eyebrow, QESSEQ 16, tagline, CTAs, stats 16 / 64 / 48 / 8, cutout shot |
+| 1 | Hero | eyebrow, QESSEQ 16, tagline, CTAs, stats 16 / 64 / 42 / 8, cutout shot |
 | 2 | Manifesto | "Everything is live. / Dive in." + LED line |
-| 3 | Features | 01 Sequence (interactive step grid) · 02 Generate · **03 Arpeggiator** · **04 Progressions** · 05 Follow chain · 06 Control |
+| 3 | Features | 01 Sequence (interactive step grid + input options) · 02 Learn (lit scale keyboard + list of all 54 scales) · 03 Progressions (Viterbi, all 18 genres listed) · 04 Follow chain · **05 Arpeggiator** · 06 Generate · 07 Control |
 | 4 | Modes | ENC / SEQ / KEY family cards + 12 variants + gesture line |
 | 5 | Gallery | large stage + 3 switchable views |
-| 6 | Specs | 15 rows, incl. arp, progressions, generators, drums, MIDI |
-| 7 | Pre-order | mailto order form (no price, no payment) |
+| 6 | Specs | 23 rows, incl. speed/1-64 length, pattern tools, recording, arp, scales, progressions, generators, chords, drums, MIDI, open firmware/hardware |
+| 7 | Open | open firmware, open hardware (CV/Gate, pedals, I²C, BLE 5) and the free core |
+| 8 | Pre-order | mailto order form to `contact@wipidim.com` (no price, no payment) |
 | — | Footer | brand, links, slogan |
 
 ### Interactive widgets (`js/main.js`)
 
 | Widget | Behaviour |
 |--------|-----------|
-| Step grid | 6 tracks × 16 pads, tap to toggle, animated playhead, horizontal swipe on mobile |
+| Step grid | one 16-pad line (as on the panel) with 6 track tabs — switching track swaps the line, taps toggle pads, animated playhead, horizontal swipe on mobile |
 | Arpeggiator | cycles the 9 walk orders (up/down/up-down/random ×2/out-in/in-out/converge/diverge) over a 2-octave span |
-| Progressions | cycles genre proposals (18 genre grammars referenced), tap a chord to accept, cadence band updates |
+| Progressions | cycles all 18 genre grammars, tap a chord to accept, cadence band updates |
 | Gallery | thumbnail switcher with fade + caption |
 | Order form | validates name/email, then opens `mailto:` with the request pre-filled |
 
 All animation respects `prefers-reduced-motion` and pauses when off-screen
 (IntersectionObserver).
+
+### Lists mirrored from the firmware
+
+The 54 scale chips in Learn follow `kScaleName` (`QESSEQ16/Chords.cpp`) using the
+panel's full spellings from the name map in `QESSEQ16/ScreenPanel.cpp`; the 18
+genres follow `genreNames[GENRE_COUNT]` in `QESSEQ16/genre_data.h` and the widget's
+chord examples in `js/main.js` (`GENRES`) use the same order; the 18 drum styles
+under Generate follow `kGenreName[DRUM_GENRES]` in `QESSEQ16/Drum.cpp`. Both firmware files
+live in the [SC01_SEQPORT](https://github.com/2b2a2t2/SC01_SEQPORT) repository —
+regenerate those two blocks from the code if the tables ever change.
 
 ## What you'll want to edit
 
@@ -86,7 +97,7 @@ All animation respects `prefers-reduced-motion` and pauses when off-screen
 
 ```js
 const CONFIG = {
-  orderEmail: 'orders@wipidim.com',   // ← change this
+  orderEmail: 'contact@wipidim.com',   // ← change this
   productName: 'QESSEQ 16'
 };
 ```
@@ -101,16 +112,16 @@ no fees, no price shown. Swap in Stripe/PayPal later without touching the layout
 **4. Mode colours** — `css/style.css`, `:root`:
 
 ```css
---mode-enc:var(--led-blue);    /* Encoder family */
---mode-seq:var(--led-cyan);    /* Sequencer family */
---mode-key:var(--led-green);   /* Keyboard family */
+--mode-enc:var(--led-violet);  /* Encoder family — purple */
+--mode-seq:var(--led-blue);    /* Sequencer family — blue */
+--mode-key:var(--led-teal);    /* Keyboard family — teal */
 ```
 
-These follow the reference site's palette (blue / cyan / green). The device
-firmware (`QESSEQ16/Modes.cpp`, `dimColorFor()`) lights the mode pads
-**purple / blue / sea-green** — if you want the site to match the hardware,
-change the three values above to `var(--led-violet)` / `var(--led-blue)` /
-`var(--led-green)`.
+These follow the device firmware (`QESSEQ16/Modes.cpp`, `dimColorFor()`), which
+lights the mode pads **purple / blue / teal**. `--led-teal` is defined next to
+the rest of the LED palette in the same `:root` block. Section accents follow the
+same families: the arpeggiator (sequencer) uses `--mode-seq`, the progression
+engine and the lit-scale visual (keyboard) use `--mode-key`.
 
 **5. Images** — replace files in `assets/web/`; keep the `-lg.webp` retina
 variants in sync (2000 px wide) so Lighthouse stays happy.

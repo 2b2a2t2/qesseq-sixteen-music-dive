@@ -6,7 +6,7 @@
    ⚠️  EDIT THIS: the email address order requests go to.
    ---------------------------------------------------------- */
 const CONFIG = {
-  orderEmail: 'orders@wipidim.com',
+  orderEmail: 'contact@wipidim.com',
   productName: 'QESSEQ 16'
 };
 
@@ -51,70 +51,88 @@ if ('IntersectionObserver' in window) {
 }
 
 /* ==========================================================
-   01 · STEP GRID  (16 tracks × 16 steps, live playhead)
+   01 · STEP GRID  (one 16-step line, per track — like the
+   hardware: change channel and the line changes with it)
    ========================================================== */
 (function stepGrid() {
   const host = document.getElementById('stepRows');
   const counter = document.getElementById('stepCount');
-  if (!host) return;
+  const trackLabel = document.getElementById('stepTrack');
+  const chanBar = document.getElementById('stepChans');
+  if (!host || !chanBar) return;
 
   const TRACKS = [
-    { name: 'KICK',  color: 'var(--led-red)',    pattern: 'x...x...x...x..x' },
-    { name: 'SNARE', color: 'var(--led-violet)', pattern: '....x.......x...' },
-    { name: 'HAT',   color: 'var(--led-white)',  pattern: '..x...x...x...xx' },
-    { name: 'BASS',  color: 'var(--led-blue)',   pattern: 'x..x..x...x.x...' },
-    { name: 'CHORD', color: 'var(--led-green)',  pattern: 'x.......x...x...' },
-    { name: 'LEAD',  color: 'var(--led-cyan)',   pattern: '..x.x....x.x..x.' }
+    { name: 'KICK',  ch: 1, color: 'var(--led-red)',    pattern: 'x...x...x...x..x' },
+    { name: 'SNARE', ch: 2, color: 'var(--led-violet)', pattern: '....x.......x...' },
+    { name: 'HAT',   ch: 3, color: 'var(--led-white)',  pattern: '..x...x...x...xx' },
+    { name: 'BASS',  ch: 4, color: 'var(--led-blue)',   pattern: 'x..x..x...x.x...' },
+    { name: 'CHORD', ch: 5, color: 'var(--led-green)',  pattern: 'x.......x...x...' },
+    { name: 'LEAD',  ch: 6, color: 'var(--led-cyan)',   pattern: '..x.x....x.x..x.' }
   ];
 
   const state = TRACKS.map(t => t.pattern.split('').map(c => c === 'x'));
-  const cells = [];
+  const tabs = [];
+  let cells = [];
+  let current = 0;
+  let step = 0;
+  let pinned = false;
 
-  TRACKS.forEach((t, r) => {
-    const row = document.createElement('div');
-    row.className = 'stepgrid__row';
-    row.style.setProperty('--pad', t.color);
+  TRACKS.forEach((t, i) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'stepgrid__chan';
+    b.style.setProperty('--pad', t.color);
+    b.textContent = 'CH ' + t.ch;
+    b.setAttribute('role', 'tab');
+    b.setAttribute('aria-label', t.name + ' — channel ' + t.ch);
+    b.addEventListener('click', () => { pinned = true; selectTrack(i); });
+    chanBar.appendChild(b);
+    tabs[i] = b;
+  });
 
-    const name = document.createElement('span');
-    name.className = 'stepgrid__name';
-    name.textContent = t.name;
-
-    const grid = document.createElement('div');
-    grid.className = 'stepgrid__cells';
-    grid.setAttribute('role', 'group');
-    grid.setAttribute('aria-label', t.name + ' steps');
-
-    cells[r] = [];
+  function buildLine() {
+    const t = TRACKS[current];
+    host.innerHTML = '';
+    host.style.setProperty('--pad', t.color);
+    host.setAttribute('aria-label', t.name + ' 16 steps');
+    cells = [];
     for (let c = 0; c < 16; c++) {
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'stepgrid__cell' + (c % 4 === 0 ? ' is-beat' : '');
-      b.dataset.on = state[r][c] ? '1' : '0';
-      b.setAttribute('aria-pressed', String(state[r][c]));
       b.setAttribute('aria-label', t.name + ' step ' + (c + 1));
       b.addEventListener('click', () => {
-        state[r][c] = !state[r][c];
-        b.dataset.on = state[r][c] ? '1' : '0';
-        b.setAttribute('aria-pressed', String(state[r][c]));
+        pinned = true;
+        state[current][c] = !state[current][c];
+        paint();
       });
-      grid.appendChild(b);
-      cells[r][c] = b;
+      host.appendChild(b);
+      cells[c] = b;
     }
-
-    row.append(name, grid);
-    host.appendChild(row);
-  });
-
-  let step = 0;
-  function paint() {
-    for (let r = 0; r < TRACKS.length; r++) {
-      for (let c = 0; c < 16; c++) {
-        cells[r][c].classList.toggle('is-hit', state[r][c] && c === step);
-      }
-    }
-    counter.textContent = 'STEP ' + String(step + 1).padStart(2, '0') + ' / 16';
   }
-  paint();
+
+  function selectTrack(i) {
+    current = i;
+    buildLine();
+    tabs.forEach((b, n) => {
+      b.dataset.on = n === i ? '1' : '0';
+      b.setAttribute('aria-selected', String(n === i));
+    });
+    paint();
+  }
+
+  function paint() {
+    const t = TRACKS[current];
+    cells.forEach((b, c) => {
+      b.dataset.on = state[current][c] ? '1' : '0';
+      b.setAttribute('aria-pressed', String(state[current][c]));
+      b.classList.toggle('is-hit', state[current][c] && c === step);
+    });
+    counter.textContent = String(step + 1).padStart(2, '0') + ' / 16';
+    trackLabel.textContent = 'CH ' + t.ch + ' · ' + t.name;
+  }
+
+  selectTrack(0);
 
   // show the "swipe" hint only when the pads overflow their card
   const scrollBox = document.querySelector('.stepgrid__scroll');
@@ -128,19 +146,24 @@ if ('IntersectionObserver' in window) {
 
   if (!reduceMotion) {
     let timer = null;
-    const tick = () => { step = (step + 1) % 16; paint(); };
+    const tick = () => {
+      step = (step + 1) % 16;
+      // the line follows the track, the way the panel does
+      if (step === 0 && !pinned) selectTrack((current + 1) % TRACKS.length);
+      paint();
+    };
     const io = new IntersectionObserver(entries => {
       entries.forEach(e => {
         if (e.isIntersecting && !timer) timer = setInterval(tick, 140);
         else if (!e.isIntersecting && timer) { clearInterval(timer); timer = null; }
       });
     }, { threshold: 0.15 });
-    io.observe(document.getElementById('stepgrid'));
+    io.observe(card || document.body);
   }
 })();
 
 /* ==========================================================
-   03 · ARPEGGIATOR  (nine walk orders over a spanned chord)
+   05 · ARPEGGIATOR  (nine walk orders over a spanned chord)
    ========================================================== */
 (function arpeggiator() {
   const host = document.getElementById('arpTrack');
@@ -235,23 +258,31 @@ if ('IntersectionObserver' in window) {
 })();
 
 /* ==========================================================
-   04 · PROGRESSION ENGINE  (genre grammar → chord proposals)
+   03 · PROGRESSION ENGINE  (genre grammar → chord proposals, Viterbi-scored)
    ========================================================== */
 (function progressions() {
   const list = document.getElementById('progChords');
   if (!list) return;
 
   const GENRES = [
-    { name: 'POP',       chords: ['I', 'V', 'vi', 'IV'],  cad: 'AUTHENTIC' },
-    { name: 'ROCK',      chords: ['I', 'bVII', 'IV', 'I'], cad: 'PLAGAL' },
-    { name: 'JAZZ',      chords: ['ii', 'V', 'I', 'vi'],  cad: 'AUTHENTIC' },
-    { name: 'FUNK',      chords: ['I7', 'IV7', 'V7', 'I7'], cad: 'AUTHENTIC' },
-    { name: 'REGGAE',    chords: ['I', 'IV', 'I', 'V'],   cad: 'PLAGAL' },
-    { name: 'DUBTECHNO', chords: ['i', 'bVI', 'bIII', 'bVII'], cad: 'DECEPTIVE' },
-    { name: 'BLUES',     chords: ['I7', 'IV7', 'I7', 'V7'], cad: 'HALF' },
-    { name: 'MODAL',     chords: ['i7', 'i7', 'bVI7', 'bVII7'], cad: 'DECEPTIVE' },
-    { name: 'HIPHOP',    chords: ['i', 'bVI', 'bVII', 'i'], cad: 'DECEPTIVE' },
-    { name: 'LATIN',     chords: ['i', 'iv', 'V7', 'i'],   cad: 'AUTHENTIC' }
+    { name: 'POP',        chords: ['I', 'V', 'vi', 'IV'],    cad: 'AUTHENTIC' },
+    { name: 'ROCK',       chords: ['I', 'bVII', 'IV', 'I'],  cad: 'PLAGAL' },
+    { name: 'JAZZ',       chords: ['ii', 'V', 'I', 'vi'],    cad: 'AUTHENTIC' },
+    { name: 'CLASSICAL',  chords: ['I', 'IV', 'V', 'I'],     cad: 'AUTHENTIC' },
+    { name: 'FOLK',       chords: ['I', 'IV', 'I', 'V'],     cad: 'PLAGAL' },
+    { name: 'COUNTRY',    chords: ['I', 'V', 'vi', 'IV'],    cad: 'AUTHENTIC' },
+    { name: 'BLUES',      chords: ['I7', 'IV7', 'I7', 'V7'], cad: 'HALF' },
+    { name: 'RNB',        chords: ['ii7', 'V7', 'I7', 'vi7'], cad: 'AUTHENTIC' },
+    { name: 'FUNK',       chords: ['I7', 'IV7', 'V7', 'I7'], cad: 'AUTHENTIC' },
+    { name: 'METAL',      chords: ['i', 'bVI', 'bVII', 'i'], cad: 'DECEPTIVE' },
+    { name: 'HIPHOP',     chords: ['i', 'bVI', 'bVII', 'i'], cad: 'DECEPTIVE' },
+    { name: 'ELECTRONIC', chords: ['i', 'i', 'bVII', 'bVII'], cad: 'DECEPTIVE' },
+    { name: 'REGGAE',     chords: ['I', 'IV', 'I', 'V'],     cad: 'PLAGAL' },
+    { name: 'DUBTECHNO',  chords: ['i', 'bVI', 'bIII', 'bVII'], cad: 'DECEPTIVE' },
+    { name: 'GOSPEL',     chords: ['I', 'I7', 'IV', 'iv'],   cad: 'AUTHENTIC' },
+    { name: 'LATIN',      chords: ['i', 'iv', 'V7', 'i'],    cad: 'AUTHENTIC' },
+    { name: 'CINEMATIC',  chords: ['i', 'bVI', 'iv', 'v'],   cad: 'DECEPTIVE' },
+    { name: 'MODAL',      chords: ['i7', 'i7', 'bVI7', 'bVII7'], cad: 'DECEPTIVE' }
   ];
 
   const items = Array.from(list.querySelectorAll('button'));

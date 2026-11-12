@@ -4,12 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>QESSEQ 16 — Advanced MIDI Sequencer by WipidiM</title>
-<meta name="description" content="QESSEQ 16 by WipidiM: a 16-track advanced MIDI sequencer with 48 lit pads, 8 encoders, built-in arpeggiators, a genre progression engine and generators for basslines, leads and harmonies.">
+<meta name="description" content="QESSEQ 16 by WipidiM: a 16-track advanced MIDI sequencer with 42 lit pads, 8 encoders, 54 scales, a genre progression engine and generators for basslines, leads and harmonies.">
 <meta name="author" content="WipidiM">
 
 <meta property="og:site_name" content="WipidiM">
 <meta property="og:title" content="QESSEQ 16 — Advanced MIDI Sequencer by WipidiM">
-<meta property="og:description" content="Sixteen tracks, forty-eight lit pads, arpeggios and a progression engine that writes with you. High Music Dive.">
+<meta property="og:description" content="16 tracks, 42 lit pads, arpeggios and a progression engine that writes with you. High Music Dive.">
 <meta property="og:type" content="website">
 <meta property="og:image" content="assets/web/qesseq16-angle-cutout-lg.webp">
 <meta name="twitter:card" content="summary_large_image">
@@ -37,6 +37,7 @@
     <a href="#modes">Modes</a>
     <a href="#gallery">Gallery</a>
     <a href="#specs">Specs</a>
+    <a href="#open">Open</a>
   </nav>
 
   <div class="nav__actions">
@@ -54,6 +55,7 @@
     <a href="#modes" class="menu__link">Modes</a>
     <a href="#gallery" class="menu__link">Gallery</a>
     <a href="#specs" class="menu__link">Specs</a>
+    <a href="#open" class="menu__link">Open</a>
     <a href="#preorder" class="menu__link menu__link--accent">Pre-order</a>
   </nav>
   <p class="menu__slogan">High Music Dive</p>
@@ -72,7 +74,7 @@
         <h1 class="hero__title reveal" data-delay="1">QESSEQ&nbsp;16</h1>
         <p class="hero__tagline reveal" data-delay="2">The advanced MIDI sequencer</p>
         <p class="hero__intro reveal" data-delay="3">
-          Sixteen tracks, forty-eight lit pads, eight encoders and a brain that writes
+          16 tracks, 42 lit pads, 8 encoders and a brain that writes
           basslines, arpeggios, leads and harmonies with you. No menus to save, no computer required.
         </p>
 
@@ -84,14 +86,14 @@
         <dl class="hero__stats reveal" data-delay="4">
           <div><dt>16</dt><dd>tracks</dd></div>
           <div><dt>64</dt><dd>steps per track</dd></div>
-          <div><dt>48</dt><dd>lit pads</dd></div>
+          <div><dt>42</dt><dd>lit pads</dd></div>
           <div><dt>8</dt><dd>encoders</dd></div>
         </dl>
       </div>
 
       <figure class="hero__shot led-reflection reveal" data-delay="2">
         <img src="assets/web/qesseq16-angle-cutout-lg.webp"
-             alt="The QESSEQ 16 at an angle from the left: brushed metal panel, colour touchscreen, eight blue-lit encoders and forty-eight illuminated pads"
+             alt="The QESSEQ 16 at an angle from the left: brushed metal panel, colour touchscreen, 8 blue-lit encoders and 42 illuminated pads"
              width="2000" height="1143" fetchpriority="high">
       </figure>
     </div>
@@ -107,7 +109,7 @@
         <span class="text-led">Dive in.</span>
       </h2>
       <p class="manifesto__body reveal" data-delay="1">
-        One instrument, three ways to play: a keyboard, a 16-track sequencer, and a bank
+        1 instrument, 3 ways to play: a keyboard, a 16-track sequencer, and a bank
         of MIDI knobs. Every change happens while the music runs.
       </p>
       <div class="led-line reveal" data-delay="2" aria-hidden="true"></div>
@@ -119,17 +121,27 @@
     <div class="wrap">
 
       <!-- 01 Sequence -->
-      <article class="feature">
+<article class="feature">
         <div class="feature__text reveal">
           <p class="eyebrow">01 — Sequence</p>
-          <h2 class="feature__title">Sixteen tracks. Each with its own time.</h2>
+          <h2 class="feature__title">16 tracks. Each with its own time.</h2>
           <p class="feature__body">
-            One track per MIDI channel, up to 64 steps each. Run tracks at different lengths
-            and speeds for polymeters and polyrhythms that never repeat the same way twice.
+            1 track per MIDI channel, up to 64 steps each. Slow a track to <strong>1/64</strong>
+            and a single step lasts 4 bars — that is 256 bars of sequence for phrases that
+            really develop. Run tracks at different lengths and speeds for polymeters and
+            polyrhythms that never repeat the same way twice. Fill a track any way you like:
+            TR-REC step entry, live recording, Björklund (Euclidean) rhythms, or the
+            generative engines.
           </p>
           <ul class="points">
             <li>DRUM, MONO and POLY track types</li>
+            <li>Speeds down to 1/64 — a step can last 4 bars, up to 256 bars per track</li>
+            <li>TR-REC step entry, live recording, Björklund / Euclidean generation</li>
+            <li>Overdub recording with 4 layers</li>
+            <li>Copy, paste, divide, multiply and loop</li>
+            <li>Pattern edit lock keeps a finished pattern safe while you work on the rest</li>
             <li>Gate, velocity, accent, glide, tie and probability per step</li>
+            <li>Every generated sequence stays editable — tweak, nudge or rewrite it step by step</li>
             <li>Internal clock or external MIDI sync</li>
           </ul>
         </div>
@@ -139,90 +151,146 @@
           <div class="stepgrid" id="stepgrid">
             <div class="stepgrid__bar">
               <span>SEQUENCER 1</span>
-              <span class="stepgrid__step" id="stepCount">STEP 01 / 16</span>
+              <span class="stepgrid__step" id="stepTrack">CH 1 · KICK</span>
             </div>
+            <div class="stepgrid__chans" id="stepChans" role="tablist" aria-label="Tracks"></div>
             <div class="stepgrid__scroll">
-              <div class="stepgrid__rows" id="stepRows"></div>
+              <div class="stepgrid__line" id="stepRows" role="group" aria-label="KICK 16 steps"></div>
             </div>
-            <p class="stepgrid__hint">▸ tap the pads<span class="only-narrow"> · swipe →</span></p>
-          </div>
-        </div>
-      </article>
-
-      <!-- 02 Generate -->
-      <article class="feature feature--flip">
-        <div class="feature__text reveal">
-          <p class="eyebrow">02 — Generate</p>
-          <h2 class="feature__title">Let it write the bassline.</h2>
-          <p class="feature__body">
-            Built-in generators roll basslines, leads, arpeggios and harmonies that stay in
-            your key and scale. Turn FILL, ACCENT and GLIDE until it grooves.
-            Don't like it? Hold to undo.
-          </p>
-          <ul class="points">
-            <li>Bass, Lead, Arp, Harm, Comp and Skank engines</li>
-            <li>Classic random or Euclidean rhythms</li>
-            <li>18 drum styles with live fill and motion</li>
-          </ul>
-        </div>
-        <div class="feature__visual reveal" data-delay="1">
-          <figure class="shot shot--43">
-            <img src="assets/web/qesseq16-top-cutout-lg.webp"
-                 alt="The QESSEQ 16 at a three-quarter angle from the front, its touchscreen showing the Sequencer page and generator controls"
-                 loading="lazy" width="2000" height="1179">
-          </figure>
-        </div>
-      </article>
-
-      <!-- 03 Arpeggiator -->
-      <article class="feature">
-        <div class="feature__text reveal">
-          <p class="eyebrow">03 — Arpeggiate</p>
-          <h2 class="feature__title">Nine ways to walk a chord.</h2>
-          <p class="feature__body">
-            Set any MONO track to <strong>ARP</strong> and it becomes an arpeggiator.
-            Span the chord over up to four octaves, pick a walk order, then arm a sub-page
-            and the whole encoder row turns into that page's controls.
-          </p>
-          <ul class="points">
-            <li>Walks: up, down, up-down, random ×2, out-in, in-out, converge, diverge</li>
-            <li>Four sub-pages — ARP ORDER · ARP MOTION · ARP GENERATIVE · ARP OPTIONS</li>
-            <li>Markov and random-walk engines with seed, rate, depth and memory</li>
-          </ul>
-        </div>
-
-        <div class="feature__visual reveal" data-delay="1">
-          <div class="arp" id="arp">
-            <div class="arp__bar">
-              <span>ARP</span>
-              <span class="arp__mode" id="arpMode">UP</span>
-            </div>
-            <div class="arp__chord">
-              <span class="arp__label">CHORD</span>
-              <span class="arp__notes" id="arpChord">C · E · G · B</span>
-            </div>
-            <ol class="arp__track" id="arpTrack"></ol>
             <div class="arp__meta">
-              <span>SPAN <b id="arpSpan">2 OCT</b></span>
-              <span>SKIP <b>OFF</b></span>
-              <span>INST <b>OFF</b></span>
+              <span>STEP <b id="stepCount">01 / 16</b></span>
+              <span>SPEED <b>1/16</b></span>
+              <span>TRACKS <b>16</b></span>
             </div>
+            <p class="stepgrid__hint">▸ tap a pad to toggle it · pick a track to see its line<span class="only-narrow"> · swipe →</span></p>
           </div>
         </div>
       </article>
 
-      <!-- 04 Progressions -->
-      <article class="feature feature--flip">
+      <!-- 02 Learn -->
+<article class="feature">
         <div class="feature__text reveal">
-          <p class="eyebrow">04 — Progress</p>
+          <p class="eyebrow">02 — Learn</p>
+          <h2 class="feature__title">The theory, lit up.</h2>
+          <p class="feature__body">
+            The pads teach as well as play. In <strong>KEY</strong> mode the notes of the
+            current scale light up across the keyboard, so the shape of a mode is something
+            you see before you hear it. Degrees are named in Roman numerals — I, ♭III, V —
+            and tension tones, harmonic movement, inversions and tessitura stop being
+            abstractions: they are pads glowing under your fingers while the progression runs.
+          </p>
+          <ul class="points">
+            <li>54 scales — chromatic, the church modes, harmonic and melodic minor, harmonic major, pentatonic and blues, symmetric, bebop, Messiaen modes, maqam and gamelan</li>
+            <li>Chord movement, guide tones and inversions visible in real time</li>
+            <li>Tessitura and voicing spread map the range you are working in</li>
+          </ul>
+        </div>
+
+        <div class="feature__visual reveal" data-delay="1">
+          <div class="scale">
+            <div class="stepgrid__bar">
+              <span>KEYBOARD 1</span>
+              <span class="scale__mode">D DORIAN</span>
+            </div>
+            <ol class="scale__keys" aria-label="1 octave of D Dorian lit on the pads">
+              <li class="scale__key is-root"><b>I</b><span>D</span></li>
+              <li class="scale__key is-flat"><b>·</b><span>D♯</span></li>
+              <li class="scale__key is-on"><b>II</b><span>E</span></li>
+              <li class="scale__key is-on"><b>♭III</b><span>F</span></li>
+              <li class="scale__key is-flat"><b>·</b><span>F♯</span></li>
+              <li class="scale__key is-on"><b>IV</b><span>G</span></li>
+              <li class="scale__key is-flat"><b>·</b><span>G♯</span></li>
+              <li class="scale__key is-on"><b>V</b><span>A</span></li>
+              <li class="scale__key is-flat"><b>·</b><span>A♯</span></li>
+              <li class="scale__key is-on"><b>VI</b><span>B</span></li>
+              <li class="scale__key is-on"><b>♭VII</b><span>C</span></li>
+              <li class="scale__key is-flat"><b>·</b><span>C♯</span></li>
+            </ol>
+            <div class="arp__meta">
+              <span>DEGREES <b>I · II · ♭III · IV · V · VI · ♭VII</b></span>
+              <span>TENSION <b>♭VII · II</b></span>
+              <span>RANGE <b>C3 – C6</b></span>
+            </div>
+          </div>
+        </div>
+
+        <div class="feature__wide reveal" data-delay="2">
+          <p class="chips__head">54 scales <span>· every one of them lit across the pads</span></p>
+          <ul class="chips" aria-label="The 54 scales">
+            <li>Chromatic</li>
+            <li>Major</li>
+            <li>Minor</li>
+            <li>Harmonic Minor</li>
+            <li>Melodic Minor</li>
+            <li>Dorian</li>
+            <li>Phrygian</li>
+            <li>Lydian</li>
+            <li>Mixolydian</li>
+            <li>Locrian</li>
+            <li>Major Pentatonic</li>
+            <li>Minor Pentatonic</li>
+            <li>Blues</li>
+            <li>Whole Tone</li>
+            <li>Diminished Half-Whole</li>
+            <li>Diminished Whole-Half</li>
+            <li>Double Harmonic</li>
+            <li>Phrygian Dominant</li>
+            <li>Hungarian Minor</li>
+            <li>Misheberakh</li>
+            <li>Lydian Dominant</li>
+            <li>Altered</li>
+            <li>Bebop Dominant</li>
+            <li>Bebop Major</li>
+            <li>Lydian Augmented</li>
+            <li>Mixolydian b6</li>
+            <li>Locrian Natural 2</li>
+            <li>Dorian #4</li>
+            <li>Lydian #2</li>
+            <li>Ultralocrian</li>
+            <li>Persian</li>
+            <li>Neapolitan Minor</li>
+            <li>Neapolitan Major</li>
+            <li>Augmented</li>
+            <li>Promethean</li>
+            <li>Enigmatic</li>
+            <li>In Sen</li>
+            <li>Yo</li>
+            <li>Hirajoshi</li>
+            <li>Harmonic Major</li>
+            <li>Messiaen 3</li>
+            <li>Messiaen 4</li>
+            <li>Messiaen 5</li>
+            <li>Messiaen 6</li>
+            <li>Messiaen 7</li>
+            <li>Spanish 8</li>
+            <li>Saba</li>
+            <li>Iwato</li>
+            <li>Kumoi</li>
+            <li>Pelog S</li>
+            <li>Pelog T</li>
+            <li>Rast</li>
+            <li>Bayati</li>
+            <li>Hijaz</li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- 03 Progress -->
+<article class="feature feature--flip">
+        <div class="feature__text reveal">
+          <p class="eyebrow">03 — Progress</p>
           <h2 class="feature__title">A progression engine with taste.</h2>
           <p class="feature__body">
             In <strong>KEY 4</strong> the instrument proposes chords from a real genre table:
-            eighteen transition matrices, chord qualities, inversions and rhythm templates
-            measured from the music itself. Tap to accept, hold to bake it into the sequence.
+            18 transition matrices, chord qualities, inversions and rhythm templates
+            measured from the music itself. A <strong>Viterbi</strong> pass then finds the most
+            musical path through the matrix, weighing where you are against where you came
+            from, so the proposal follows the grammar of the style instead of hopping from
+            chord to chord at random. Tap to accept, hold to bake it into the sequence.
           </p>
           <ul class="points">
-            <li>18 genre grammars — Pop, Rock, Jazz, Funk, Reggae, Dubtechno, Latin, Modal…</li>
+            <li>18 genre grammars — POP · ROCK · JAZZ · CLASSICAL · FOLK · COUNTRY · BLUES · RNB · FUNK · METAL · HIPHOP · ELECTRONIC · REGGAE · DUBTECHNO · GOSPEL · LATIN · CINEMATIC · MODAL</li>
+            <li>Viterbi decoding scores every path through the genre and proposes the best one</li>
             <li>Cadence bands: authentic · plagal · deceptive · half</li>
             <li>Phrase templates FREE / AABB / ABAB / ABAC / AABA</li>
             <li>Scale, root, octave and chord latch on the encoders</li>
@@ -251,18 +319,18 @@
         </div>
       </article>
 
-      <!-- 05 Follow -->
-      <article class="feature">
+      <!-- 04 Follow -->
+<article class="feature">
         <div class="feature__text reveal">
-          <p class="eyebrow">05 — Follow</p>
+          <p class="eyebrow">04 — Follow</p>
           <h2 class="feature__title">Chain tracks into harmony.</h2>
           <p class="feature__body">
-            Point one track at another and it listens. A lead follows your chords, a harmony
-            track reads your bassline, a bass locks to the progression. Change one part and
+            Point 1 track at another and it listens. A lead follows your chords, a harmony
+            track reads your bassline, a bass locks to the progression. Change 1 part and
             the others move with it.
           </p>
           <ul class="points">
-            <li>Bass → Harm → Chords → Lead chains</li>
+            <li>Bass → Harmonizer → Chords → Lead chains</li>
             <li>Follow, or freeze the chord of the moment</li>
             <li>Chord-tone and guide-tone mapping</li>
           </ul>
@@ -278,7 +346,7 @@
             <span class="chain__link" aria-hidden="true"></span>
             <div class="chain__node" style="--pad:var(--led-cyan)">
               <span class="chain__dot"></span>
-              <span class="chain__label">HARM</span>
+              <span class="chain__label">HARMONIZER</span>
               <span class="chain__sub">CH 2 · FOLLOW</span>
             </div>
             <span class="chain__link" aria-hidden="true"></span>
@@ -297,19 +365,105 @@
         </div>
       </article>
 
-      <!-- 06 Control -->
-      <article class="feature feature--flip">
+      <!-- 05 Arpeggiate -->
+<article class="feature">
         <div class="feature__text reveal">
-          <p class="eyebrow">06 — Control</p>
-          <h2 class="feature__title">Eight knobs. Your whole studio.</h2>
+          <p class="eyebrow">05 — Arpeggiate</p>
+          <h2 class="feature__title">9 ways to walk a chord.</h2>
           <p class="feature__body">
-            Switch to encoder mode and the eight knobs become MIDI CC controllers, with banks
+            Set any MONO track to <strong>ARP</strong> and it becomes an arpeggiator.
+            Span the chord over up to 4 octaves, pick a walk order, then arm a sub-page
+            and the whole encoder row turns into that page's controls.
+          </p>
+          <ul class="points">
+            <li>Walks: up, down, up-down, random ×2, out-in, in-out, converge, diverge</li>
+            <li>4 sub-pages — ARP ORDER · ARP MOTION · ARP GENERATIVE · ARP OPTIONS</li>
+            <li>Markov and random-walk engines with seed, rate, depth and memory</li>
+          </ul>
+        </div>
+
+        <div class="feature__visual reveal" data-delay="1">
+          <div class="arp" id="arp">
+            <div class="arp__bar">
+              <span>ARP</span>
+              <span class="arp__mode" id="arpMode">UP</span>
+            </div>
+            <div class="arp__chord">
+              <span class="arp__label">CHORD</span>
+              <span class="arp__notes" id="arpChord">C · E · G · B</span>
+            </div>
+            <ol class="arp__track" id="arpTrack"></ol>
+            <div class="arp__meta">
+              <span>SPAN <b id="arpSpan">2 OCT</b></span>
+              <span>SKIP <b>OFF</b></span>
+              <span>INST <b>OFF</b></span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <!-- 06 Generate -->
+<article class="feature feature--flip">
+        <div class="feature__text reveal">
+          <p class="eyebrow">06 — Generate</p>
+          <h2 class="feature__title">Let it write the bassline.</h2>
+          <p class="feature__body">
+            Built-in generators roll basslines, leads, arpeggios and harmonies that stay in
+            your key and scale. Turn FILL, ACCENT and GLIDE until it grooves.
+            Don't like it? Hold to undo.
+          </p>
+          <ul class="points">
+            <li>Bass, Lead, Arp, Harmonizer, Comp and Skank engines</li>
+            <li>Strum spread and direction on POLY chords</li>
+            <li>Classic random or Euclidean rhythms</li>
+            <li>18 drum styles with live fill and motion</li>
+          </ul>
+        </div>
+        <div class="feature__visual reveal" data-delay="1">
+          <figure class="shot shot--43">
+            <img src="assets/web/qesseq16-top-cutout-lg.webp"
+                 alt="The QESSEQ 16 at a three-quarter angle from the front, its touchscreen showing the Sequencer page and generator controls"
+                 loading="lazy" width="2000" height="1179">
+          </figure>
+        </div>
+              <div class="feature__wide chips--seq reveal" data-delay="2">
+          <p class="chips__head">18 drum styles <span>· straight, last-beat and last-half-bar fills, with A / B lines</span></p>
+          <ul class="chips" aria-label="The 18 drum styles">
+            <li>HOUSE</li>
+            <li>TECHNO</li>
+            <li>BREAKS</li>
+            <li>HIPHOP</li>
+            <li>TRAP</li>
+            <li>JUNGLE</li>
+            <li>FUNK</li>
+            <li>ROCK</li>
+            <li>JAZZ</li>
+            <li>LATIN</li>
+            <li>AFRO</li>
+            <li>ELECTRO</li>
+            <li>DNB</li>
+            <li>GARAGE</li>
+            <li>PUNK</li>
+            <li>SKA</li>
+            <li>DISCO</li>
+            <li>REGGAE</li>
+          </ul>
+        </div>
+</article>
+
+      <!-- 07 Control -->
+<article class="feature feature--flip">
+        <div class="feature__text reveal">
+          <p class="eyebrow">07 — Control</p>
+          <h2 class="feature__title">8 knobs. Your whole studio.</h2>
+          <p class="feature__body">
+            Switch to encoder mode and the 8 knobs become MIDI CC controllers, with banks
             for 36 CCs. Your DAW sends values back, so the knobs always match.
             Drive Ableton Live clips and devices too.
           </p>
           <ul class="points">
             <li>CC banks F1–F4</li>
-            <li>Two-way value feedback</li>
+            <li>2-way value feedback</li>
             <li>Ableton Live clip and device control</li>
           </ul>
         </div>
@@ -317,7 +471,7 @@
         <div class="feature__visual reveal" data-delay="1">
           <figure class="shot shot--crop">
             <img src="assets/web/qesseq16-front-cutout-lg.webp"
-                 alt="Close-up of the QESSEQ 16's eight blue-lit encoders and brushed aluminium panel"
+                 alt="Close-up of the QESSEQ 16's 8 blue-lit encoders and brushed aluminium panel"
                  loading="lazy" width="2000" height="1131">
           </figure>
         </div>
@@ -330,9 +484,9 @@
   <section class="section section--ruled" id="modes">
     <div class="wrap">
       <div class="section__head reveal">
-        <p class="eyebrow">Three families · Twelve modes</p>
-        <h2 class="section__title">One pad picks the mode.<br>The screen tells you where you are.</h2>
-        <p class="section__lead">Each family has four variants. The instrument remembers the last one you used.</p>
+        <p class="eyebrow">3 families · 12 modes</p>
+        <h2 class="section__title">1 pad picks the mode.<br>The screen tells you where you are.</h2>
+        <p class="section__lead">Each family has 4 variants. The instrument remembers the last one you used.</p>
       </div>
 
       <div class="modes">
@@ -373,7 +527,7 @@
         </article>
       </div>
 
-      <p class="modes__gesture reveal">Tap · double-tap · hold — three gestures reach every variant.</p>
+      <p class="modes__gesture reveal">Tap · double-tap · hold — 3 gestures reach every variant.</p>
     </div>
   </section>
 
@@ -383,7 +537,7 @@
       <div class="section__head reveal">
         <p class="eyebrow">The panel</p>
         <h2 class="section__title">Seen in the dark.</h2>
-        <p class="section__lead">Forty-eight pads, eight ring-lit encoders and a screen that names every parameter in full words.</p>
+        <p class="section__lead">42 pads, 8 ring-lit encoders and a screen that names every parameter in full words.</p>
       </div>
 
       <div class="gallery reveal">
@@ -426,22 +580,83 @@
       </div>
 
       <dl class="specs reveal">
-        <div class="specs__row"><dt>Tracks</dt><dd>16, one per MIDI channel</dd></div>
+        <div class="specs__row"><dt>Tracks</dt><dd>16, 1 per MIDI channel</dd></div>
         <div class="specs__row"><dt>Steps</dt><dd>Up to 64 per track (4 × 16)</dd></div>
+        <div class="specs__row"><dt>Speed</dt><dd>Down to 1/64 — 1 step can last 4 bars, up to 256 bars per track</dd></div>
+        <div class="specs__row"><dt>Recording</dt><dd>TR-REC · live record · 4-layer overdub · Björklund generation</dd></div>
+        <div class="specs__row"><dt>Pattern tools</dt><dd>Copy · paste · divide · multiply · loop · edit lock</dd></div>
         <div class="specs__row"><dt>Track types</dt><dd>DRUM · MONO · POLY</dd></div>
-        <div class="specs__row"><dt>Pads</dt><dd>48 illuminated touch pads</dd></div>
+        <div class="specs__row"><dt>Pads</dt><dd>42 illuminated touch pads</dd></div>
         <div class="specs__row"><dt>Encoders</dt><dd>8 endless encoders</dd></div>
         <div class="specs__row"><dt>Arpeggiator</dt><dd>9 walk orders, 4 sub-pages, Markov &amp; random-walk engines</dd></div>
-        <div class="specs__row"><dt>Progressions</dt><dd>18 genre grammars, 4 cadence bands, 5 phrase templates</dd></div>
-        <div class="specs__row"><dt>Generators</dt><dd>Bass · Lead · Arp · Harm · Comp · Skank — random or Euclidean</dd></div>
+        <div class="specs__row"><dt>Progressions</dt><dd>18 genre grammars, Viterbi path scoring, 4 cadence bands, 5 phrase templates</dd></div>
+        <div class="specs__row"><dt>Scales</dt><dd>54, with degrees named in Roman numerals</dd></div>
+        <div class="specs__row"><dt>Generators</dt><dd>Bass · Lead · Arp · Harmonizer · Comp · Skank — random or Euclidean</dd></div>
+        <div class="specs__row"><dt>Chords</dt><dd>POLY chords with strum spread and direction</dd></div>
         <div class="specs__row"><dt>Drum styles</dt><dd>18, with live fill and motion</dd></div>
-        <div class="specs__row"><dt>MIDI out</dt><dd>CC banks F1–F4, 36 CCs, two-way feedback, Ableton Live control</dd></div>
+        <div class="specs__row"><dt>MIDI out</dt><dd>CC banks F1–F4, 36 CCs, 2-way feedback, Ableton Live control</dd></div>
         <div class="specs__row"><dt>Lighting</dt><dd>Addressable RGB LEDs</dd></div>
         <div class="specs__row"><dt>Display</dt><dd>Built-in colour status screen</dd></div>
         <div class="specs__row"><dt>MIDI in</dt><dd>USB-MIDI + 5-pin DIN input</dd></div>
         <div class="specs__row"><dt>Clock</dt><dd>Internal master or external MIDI sync</dd></div>
-        <div class="specs__row"><dt>Firmware</dt><dd>Updatable over USB</dd></div>
+        <div class="specs__row"><dt>Firmware</dt><dd>Open source and hackable — rebuild it and flash it over USB</dd></div>
+        <div class="specs__row"><dt>Hardware</dt><dd>Open hardware — CV / Gate, pedal button inputs and I²C exposed</dd></div>
+        <div class="specs__row"><dt>Wireless</dt><dd>Bluetooth 5 LE</dd></div>
+        <div class="specs__row"><dt>Processor</dt><dd>Dual-core, with 1 core left fully unused</dd></div>
       </dl>
+    </div>
+  </section>
+
+  <!-- ============ OPEN ============ -->
+  <section class="section section--ruled" id="open">
+    <div class="wrap">
+      <div class="section__head reveal">
+        <p class="eyebrow">Open by design</p>
+        <h2 class="section__title">Yours to open up.</h2>
+        <p class="section__lead">
+          The firmware is open source and the hardware is open hardware. Nothing here is
+          sealed: read the code, change how a mode behaves, add a generator of your own,
+          or wire the panel into the rest of your rig.
+        </p>
+      </div>
+
+      <div class="modes">
+        <article class="mode" style="--pad:var(--led-cyan)">
+          <span class="mode__key">FW</span>
+          <h3 class="mode__name">Open firmware</h3>
+          <p class="mode__desc">Source you can read, rebuild and flash back over USB</p>
+          <ol class="mode__variants">
+            <li>Open source and hackable end to end</li>
+            <li>AI friendly — small, legible, clearly named</li>
+            <li>Add a generator, change a mode, keep the panel</li>
+            <li>Re-flash over USB whenever you like</li>
+          </ol>
+        </article>
+
+        <article class="mode" style="--pad:var(--led-blue)">
+          <span class="mode__key">HW</span>
+          <h3 class="mode__name">Open hardware</h3>
+          <p class="mode__desc">Real connectors and real headers, nothing sealed away</p>
+          <ol class="mode__variants">
+            <li>CV / Gate broken out to the panel</li>
+            <li>Pedal button inputs</li>
+            <li>I²C exposed for extra boards</li>
+            <li>Bluetooth 5 LE on board</li>
+          </ol>
+        </article>
+
+        <article class="mode" style="--pad:var(--led-violet)">
+          <span class="mode__key">CPU</span>
+          <h3 class="mode__name">1 core spare</h3>
+          <p class="mode__desc">Headroom left on the table, on purpose</p>
+          <ol class="mode__variants">
+            <li>Dual-core, 1 core fully unused</li>
+            <li>Room for your own DSP or control logic</li>
+            <li>Wireless link for editors and controllers</li>
+            <li>Built to be extended, not just played</li>
+          </ol>
+        </article>
+      </div>
     </div>
   </section>
 
@@ -518,6 +733,7 @@
       <a href="#modes">Modes</a>
       <a href="#gallery">Gallery</a>
       <a href="#specs">Specs</a>
+      <a href="#open">Open</a>
       <a href="#preorder">Pre-order</a>
     </nav>
 
