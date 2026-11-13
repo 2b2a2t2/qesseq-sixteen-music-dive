@@ -587,6 +587,25 @@ ol,ul{margin:0;padding:0;list-style:none}
   color:color-mix(in oklab,var(--muted-foreground) 92%,transparent);
   box-shadow:0 4px 10px rgba(0,0,0,.45);
 }
+/* the keyboard page's scale lights the keys it contains, root brightest */
+.panel__key.is-out{opacity:.42}
+.panel__key.is-scale{
+  border-color:color-mix(in oklab,var(--mode-key) 65%,transparent);
+  background:color-mix(in oklab,var(--mode-key) 14%,transparent);
+  color:var(--foreground);
+}
+.panel__key--black.is-scale{
+  border-color:color-mix(in oklab,var(--mode-key) 55%,transparent);
+  background:color-mix(in oklab,var(--mode-key) 32%,#080a0e);
+  color:var(--foreground);
+}
+.panel__key.is-root{
+  border-color:var(--mode-key);
+  background:color-mix(in oklab,var(--mode-key) 62%,transparent);
+  color:#04120f;
+  opacity:1;
+  box-shadow:0 0 10px color-mix(in oklab,var(--mode-key) 45%,transparent);
+}
 .panel__mode{
   cursor:pointer;font-family:inherit;
   border:1px solid color-mix(in oklab,var(--mode) 30%,transparent);

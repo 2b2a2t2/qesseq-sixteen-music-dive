@@ -95,6 +95,17 @@ if ('IntersectionObserver' in window) {
     'Mesia6', 'Mesia7', 'Span8', 'Saba', 'Iwato', 'Kumoi', 'PelogS', 'PelogT',
     'Rast', 'Bayati', 'Hijaz'];
   const ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  // the matching 12-bit patterns (Chords.cpp kScaleMask), bit 0 = C, so a note
+  // belongs to the scale when bit (note - root) is set
+  const SCALE_MASK = [
+    0xFFF, 0xAB5, 0x5AD, 0x9AD, 0xAAD, 0x6AD, 0x5AB, 0xAD5, 0x6B5, 0x56B,
+    0x295, 0x4A9, 0x4E9, 0x555, 0x6DB, 0xB6D, 0x9B3, 0x5B3, 0x9CD, 0x5CD,
+    0x6D5, 0x55B, 0xEB5, 0xBB5, 0xB55, 0x5B5, 0x56D, 0x6CD, 0xAD9, 0x2DB,
+    0x973, 0x9AB, 0xAAB, 0x999, 0x655, 0xD53, 0x4A3, 0x4A9, 0x1A3, 0x9B5,
+    0xDDD, 0x9E7, 0x8E3, 0xD75, 0xBEF, 0x57B, 0x5DB, 0x463, 0x28D, 0x18B,
+    0x18D, 0x6AD, 0x6AB, 0x5B3
+  ];
+  const panelKeys = [...document.querySelectorAll('#stepgrid .panel__key[data-note]')];
 
   const TRACKS = [
     { ch: 1, type: 'DRUM', scale: 0, root: 0, color: 'var(--led-red)', voices: [
@@ -297,6 +308,15 @@ if ('IntersectionObserver' in window) {
       keyRoot.textContent = root;
       keyRoot.setAttribute('aria-label', 'Key ' + root + ', click to change');
     }
+    // the same scale lights the panel keys: the notes it holds, root brightest
+    const mask = SCALE_MASK[t.scale] === undefined ? 0xFFF : SCALE_MASK[t.scale];
+    panelKeys.forEach(k => {
+      const n = Number(k.dataset.note);
+      const inScale = ((mask >> ((n - t.root + 12) % 12)) & 1) === 1;
+      k.classList.toggle('is-scale', inScale);
+      k.classList.toggle('is-out', !inScale);
+      k.classList.toggle('is-root', inScale && n === t.root);
+    });
     if (scr.listen) scr.listen.textContent = t.type === 'MONO' ? 'NOTE' : 'CHORD';
     if (scr.overdub) scr.overdub.textContent = pinned ? 'ON' : 'OFF';
     if (scr.step) scr.step.textContent = String(step + 1).padStart(2, '0') + '/16';
