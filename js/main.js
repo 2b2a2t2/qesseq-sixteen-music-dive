@@ -569,6 +569,22 @@ if ('IntersectionObserver' in window) {
   }
 
   thumbs.forEach(t => t.addEventListener('click', () => select(t)));
+
+  // on phones the thumbnails are the gallery: a swipe brings the next view to
+  // the middle, and whichever view rests there becomes the selected one
+  const strip = thumbs[0].parentElement;
+  strip.addEventListener('scroll', () => {
+    const box = strip.getBoundingClientRect();
+    const mid = box.left + box.width / 2;
+    let best = null;
+    let bestDist = Infinity;
+    thumbs.forEach(t => {
+      const r = t.getBoundingClientRect();
+      const d = Math.abs(r.left + r.width / 2 - mid);
+      if (d < bestDist) { bestDist = d; best = t; }
+    });
+    if (best && !best.classList.contains('is-active')) select(best);
+  }, { passive: true });
 })();
 
 /* ==========================================================

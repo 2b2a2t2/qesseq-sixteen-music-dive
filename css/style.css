@@ -986,7 +986,17 @@ ol,ul{margin:0;padding:0;list-style:none}
   .stepgrid__line{min-width:440px;gap:5px}
   .hero__stats{grid-template-columns:repeat(2,1fr);gap:22px 32px;width:100%}
   .hero__cta .btn{width:100%}
-  .gallery__thumbs{grid-template-columns:repeat(3,1fr);gap:8px}
+  /* the stage and its thumbnails become one swipeable strip of full-size views */
+  .gallery__stage{display:none}
+  .gallery__thumbs{
+    display:flex;gap:12px;overflow-x:auto;overscroll-behavior-x:contain;
+    scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;padding-bottom:2px;
+  }
+  .gallery__thumbs::-webkit-scrollbar{display:none}
+  .gallery__thumb{flex:0 0 92%;scroll-snap-align:start;border-radius:var(--radius-3xl)}
+  .gallery__thumb img{opacity:1;aspect-ratio:16/10;object-fit:cover}
+  .gallery__thumb:hover{transform:none}
   .prog__chords{grid-template-columns:repeat(2,1fr)}
   .panel__row{--panelgap:5px}
   .panel__pad,.panel__key,.panel__mode{height:19px;font-size:.36rem;letter-spacing:0}
