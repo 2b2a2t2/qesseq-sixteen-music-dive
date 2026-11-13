@@ -160,20 +160,20 @@
                 <div class="panel__top">
                   <div class="panel__screen" role="group" aria-label="The 480 by 320 display, showing the page of the selected mode">
                     <div class="scr scr--seq">
-                      <div class="scr-head">SEQUENCER</div>
+                      <div class="scr-head">SEQUENCER<em class="scr-note" data-scr="head">CH 1 DRUM</em></div>
                       <div class="scr-modes">
                         <span>ENCODER</span>
                         <span class="is-on">SEQUENCER</span>
                         <span>KEYBOARD</span>
                       </div>
                       <div class="scr-grid">
-                        <div class="scr-cell"><b>OCTAVE</b><span>0</span></div>
-                        <div class="scr-cell"><b>LISTEN</b><span>CHORD</span></div>
+                        <div class="scr-cell"><b>OCTAVE</b><span data-scr="octave">1</span></div>
+                        <div class="scr-cell"><b>LISTEN</b><span data-scr="listen">CHORD</span></div>
                         <div class="scr-cell"><b>PLAY</b><span>GATE</span></div>
-                        <div class="scr-cell"><b>OVERDUB</b><span>OFF</span></div>
+                        <div class="scr-cell"><b>OVERDUB</b><span data-scr="overdub">OFF</span></div>
                         <div class="scr-cell"><b>GATE</b><span>100%</span></div>
                         <div class="scr-cell"><b>VELOCITY</b><span>90</span></div>
-                        <div class="scr-cell"><b>—</b><span></span></div>
+                        <div class="scr-cell"><b>STEP</b><span data-scr="step">01/16</span></div>
                         <div class="scr-cell"><b>PROBABILITY</b><span>100%</span></div>
                       </div>
                       <div class="scr-legend">
@@ -218,15 +218,15 @@
                       </div>
                     </div>
                   </div>
-                  <div class="panel__encs" role="group" aria-label="The eight encoders, four by two">
-                    <span class="panel__enc"></span>
-                    <span class="panel__enc"></span>
-                    <span class="panel__enc"></span>
-                    <span class="panel__enc"></span>
-                    <span class="panel__enc"></span>
-                    <span class="panel__enc"></span>
-                    <span class="panel__enc"></span>
-                    <span class="panel__enc"></span>
+                  <div class="panel__encs" role="group" aria-label="The eight encoders, four by two — drag or scroll one to turn it">
+                    <button type="button" class="panel__enc" data-enc="0" aria-label="Encoder 1"></button>
+                    <button type="button" class="panel__enc" data-enc="1" aria-label="Encoder 2"></button>
+                    <button type="button" class="panel__enc" data-enc="2" aria-label="Encoder 3"></button>
+                    <button type="button" class="panel__enc" data-enc="3" aria-label="Encoder 4"></button>
+                    <button type="button" class="panel__enc" data-enc="4" aria-label="Encoder 5"></button>
+                    <button type="button" class="panel__enc" data-enc="5" aria-label="Encoder 6"></button>
+                    <button type="button" class="panel__enc" data-enc="6" aria-label="Encoder 7"></button>
+                    <button type="button" class="panel__enc" data-enc="7" aria-label="Encoder 8"></button>
                   </div>
                 </div>
                 <div class="panel__row panel__row--top" role="group" aria-label="Top row: ENC, SEQ and KEY mode pads, PLAY and REC, then the five black keys">

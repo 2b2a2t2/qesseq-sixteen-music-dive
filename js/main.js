@@ -68,6 +68,14 @@ if ('IntersectionObserver' in window) {
   const modePads = [...document.querySelectorAll('#stepgrid .panel__mode')];
   const seqScreen = document.querySelector('.scr--seq');
   const encScreen = document.querySelector('.scr--enc');
+  // the screen reads back whatever the card is doing, the way the panel does
+  const scr = {
+    head: document.querySelector('[data-scr="head"]'),
+    octave: document.querySelector('[data-scr="octave"]'),
+    listen: document.querySelector('[data-scr="listen"]'),
+    overdub: document.querySelector('[data-scr="overdub"]'),
+    step: document.querySelector('[data-scr="step"]')
+  };
   let mode = 'seq';
 
   // CH 1 is one DRUM track: the kit voices each keep their own 16-step line.
@@ -156,7 +164,59 @@ if ('IntersectionObserver' in window) {
   }
 
   modePads.forEach(b => {
-    b.addEventListener('click', () => { pinned = true; applyMode(b.dataset.mode); });
+    b.addEventListener('click', () => { pinned = true; applyMode(b.dataset.mode); updateScreen(); });
+  });
+
+  // ENC page: each knob turns the CC its encoder is bound to, and the dial
+  // under it in the display follows — drag, scroll, click or arrow keys.
+  const encKnobs = [...document.querySelectorAll('#stepgrid .panel__enc')];
+  const encDials = [...document.querySelectorAll('.scr--enc .scr-dial')];
+  const encVals = [64, 32, 96, 40, 72, 20, 108, 56];
+
+  function setEnc(i, val) {
+    const v = Math.max(0, Math.min(127, Math.round(val)));
+    encVals[i] = v;
+    if (encKnobs[i]) encKnobs[i].style.setProperty('--v', v);
+    const dial = encDials[i];
+    if (!dial) return;
+    dial.style.setProperty('--v', v);
+    const out = dial.querySelector('em');
+    if (out) out.textContent = v;
+  }
+
+  encKnobs.forEach((k, i) => {
+    let drag = null;
+    let moved = false;
+    const turn = d => setEnc(i, encVals[i] + d);
+    setEnc(i, encVals[i]);
+
+    k.addEventListener('click', () => {
+      if (moved) { moved = false; return; }
+      pinned = true; turn(8); updateScreen();
+    });
+    k.addEventListener('wheel', e => {
+      e.preventDefault(); pinned = true;
+      turn(e.deltaY < 0 ? 4 : -4); updateScreen();
+    }, { passive: false });
+    k.addEventListener('keydown', e => {
+      const d = e.key === 'ArrowUp' || e.key === 'ArrowRight' ? 2
+        : e.key === 'ArrowDown' || e.key === 'ArrowLeft' ? -2 : 0;
+      if (!d) return;
+      e.preventDefault(); pinned = true; turn(d); updateScreen();
+    });
+    k.addEventListener('pointerdown', e => {
+      drag = { y: e.clientY, v: encVals[i] }; moved = false; pinned = true;
+      k.setPointerCapture(e.pointerId);
+    });
+    k.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const d = (drag.y - e.clientY) * 1.2;
+      if (Math.abs(d) > 2) moved = true;
+      setEnc(i, drag.v + d);
+    });
+    const end = () => { drag = null; };
+    k.addEventListener('pointerup', end);
+    k.addEventListener('pointercancel', end);
   });
 
   function buildLine() {
@@ -201,6 +261,17 @@ if ('IntersectionObserver' in window) {
     paint();
   }
 
+  function updateScreen() {
+    const t = TRACKS[current];
+    const v = voicesOf(t)[voice];
+    if (scr.head) scr.head.textContent = 'CH ' + t.ch + ' ' + t.type + ' · ' + v.name;
+    // the panel's octave follows the part: kit low, chords high, bass between
+    if (scr.octave) scr.octave.textContent = String(t.type === 'DRUM' ? 1 : t.type === 'MONO' ? 2 : 4);
+    if (scr.listen) scr.listen.textContent = t.type === 'MONO' ? 'NOTE' : 'CHORD';
+    if (scr.overdub) scr.overdub.textContent = pinned ? 'ON' : 'OFF';
+    if (scr.step) scr.step.textContent = String(step + 1).padStart(2, '0') + '/16';
+  }
+
   function paint() {
     const t = TRACKS[current];
     const v = voicesOf(t)[voice];
@@ -213,6 +284,7 @@ if ('IntersectionObserver' in window) {
     const label = 'CH ' + t.ch + ' · ' + t.type + ' · ' + v.name +
       (t.follow ? ' ← ' + t.follow : '');
     trackLabel.textContent = label;
+    updateScreen();
   }
 
   // the panel walks the tracks; CH 1 stops on each kit voice on the way
