@@ -443,38 +443,64 @@ ol,ul{margin:0;padding:0;list-style:none}
   display:grid;grid-template-columns:repeat(16,minmax(24px,1fr));gap:6px;
   align-items:stretch;margin-bottom:6px;
 }
+/* The display: a 480x320 panel drawn to ScreenPanel.cpp's own layout —
+   34 px header, 34 px mode row, 2 x 75 px cell rows, 3 x 34 px legend rows.
+   Everything is sized in cqw so the whole screen scales with the card. */
 .panel__screen{
-  grid-column:1 / span 7;
-  display:flex;flex-direction:column;justify-content:space-between;gap:4px;
-  padding:7px 9px;border-radius:9px;
-  border:1px solid color-mix(in oklab,var(--card-mode) 34%,transparent);
-  background:
-    radial-gradient(120% 90% at 50% 0%,color-mix(in oklab,var(--card-mode) 14%,transparent),transparent 70%),
-    color-mix(in oklab,#05070b 88%,var(--surface));
-  box-shadow:inset 0 0 18px color-mix(in oklab,var(--card-mode) 18%,transparent);
-  font-family:var(--font-mono);overflow:hidden;
+  grid-column:1 / span 7;aspect-ratio:480 / 320;
+  container-type:inline-size;
+  border-radius:2cqw;overflow:hidden;background:#000;
+  border:1px solid color-mix(in oklab,var(--foreground) 14%,transparent);
+  box-shadow:0 0 18px color-mix(in oklab,var(--card-mode) 22%,transparent);
 }
-.panel__screen-head{
-  display:flex;justify-content:space-between;
-  font-size:.4rem;letter-spacing:.14em;text-transform:uppercase;
-  color:color-mix(in oklab,var(--card-mode) 75%,var(--muted-foreground));
+.scr{
+  width:100%;height:100%;display:grid;
+  grid-template-rows:7.083cqw 7.083cqw 31.25cqw 21.25cqw;
+  font-family:var(--font-mono);text-transform:uppercase;
+  color:#fff;letter-spacing:.04em;
 }
-.panel__screen-main{
-  margin:0;font-size:.5rem;font-weight:600;letter-spacing:.08em;
-  text-transform:uppercase;color:var(--foreground);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+.scr-head{
+  background:#181818;padding-left:2.5cqw;display:flex;align-items:center;
+  font-size:5.4cqw;font-weight:600;letter-spacing:.02em;
+  box-shadow:inset 0 -0.42cqw 0 #00fcfc;
 }
-.panel__screen-foot{
-  display:flex;justify-content:space-between;margin:0;
-  font-size:.4rem;letter-spacing:.12em;text-transform:uppercase;
-  color:var(--muted-foreground);
+.scr-modes{
+  display:grid;grid-template-columns:repeat(4,21.67cqw);
+  gap:3.33cqw;padding-left:1.25cqw;align-items:center;
 }
+.scr-modes span{
+  height:5.42cqw;display:flex;align-items:center;justify-content:center;
+  border-radius:1.25cqw;background:#181818;color:#888c88;
+  font-size:3cqw;font-weight:600;letter-spacing:0;
+}
+.scr-modes .is-on{background:#00fcfc;color:#000}
+.scr-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 1fr}
+.scr-cell{
+  display:flex;flex-direction:column;gap:1.25cqw;padding:2.08cqw 1.25cqw 0;
+  border-left:0.21cqw solid #282828;border-top:0.21cqw solid #282828;
+}
+.scr-cell:nth-child(1),.scr-cell:nth-child(5){border-left:0}
+.scr-cell:nth-child(-n+4){border-top:0}
+.scr-cell b{font-weight:400;font-size:3.1cqw;color:#888c88;letter-spacing:0}
+.scr-cell span{font-size:3.33cqw;color:#fff;line-height:1}
+.scr-legend{
+  display:grid;grid-template-columns:repeat(4,21.67cqw);
+  grid-template-rows:repeat(3,1fr);gap:0 3.33cqw;padding-left:1.25cqw;
+  align-items:center;
+}
+.scr-legend span{
+  height:5.42cqw;display:flex;align-items:center;justify-content:center;
+  border-radius:1.25cqw;background:#181818;color:#888c88;
+  font-size:2.9cqw;font-weight:600;letter-spacing:0;
+}
+.scr-legend .is-on{background:#00fcfc;color:#000}
 .panel__encs{
   grid-column:10 / span 7;
-  display:grid;grid-template-columns:repeat(4,1fr);gap:5px;align-content:start;
+  display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);
+  gap:4px;place-items:center;
 }
 .panel__enc{
-  justify-self:center;position:relative;width:74%;aspect-ratio:1;border-radius:50%;
+  justify-self:center;position:relative;width:86%;aspect-ratio:1;border-radius:50%;
   display:grid;place-items:center;
   border:1px solid color-mix(in oklab,var(--mode-enc) 42%,transparent);
   background:
