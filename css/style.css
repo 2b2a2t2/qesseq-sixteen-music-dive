@@ -515,7 +515,7 @@ ol,ul{margin:0;padding:0;list-style:none}
 .scr-cell:nth-child(1),.scr-cell:nth-child(5){border-left:0}
 .scr-cell:nth-child(-n+4){border-top:0}
 .scr-cell b{font-weight:400;font-size:3.1cqw;color:#888c88;letter-spacing:0}
-.scr-cell span{font-size:3.33cqw;color:#fff;line-height:1}
+.scr-cell span{font-size:3.33cqw;color:#fff;line-height:1;text-transform:none}
 .scr-legend{
   display:grid;grid-template-columns:repeat(4,21.67cqw);
   grid-template-rows:repeat(3,1fr);gap:0 3.33cqw;padding-left:1.25cqw;

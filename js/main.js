@@ -68,6 +68,8 @@ if ('IntersectionObserver' in window) {
   const modePads = [...document.querySelectorAll('#stepgrid .panel__mode')];
   const seqScreen = document.querySelector('.scr--seq');
   const encScreen = document.querySelector('.scr--enc');
+  const keyScreen = document.querySelector('.scr--key');
+  const keyOct = document.querySelector('[data-scr="key-oct"]');
   // the screen reads back whatever the card is doing, the way the panel does
   const scr = {
     head: document.querySelector('[data-scr="head"]'),
@@ -149,12 +151,12 @@ if ('IntersectionObserver' in window) {
   function applyMode(m) {
     mode = m;
     if (gridCard) gridCard.dataset.mode = m;
-    // the display shows the page that belongs to the mode: dials in ENC
-    if (seqScreen && encScreen) {
-      const isEnc = m === 'enc';
-      encScreen.hidden = !isEnc;
-      seqScreen.hidden = isEnc;
-    }
+    // the display shows the page that belongs to the mode: dials in ENC,
+    // the keyboard page in KEY, the sequencer page otherwise
+    const pages = { enc: encScreen, key: keyScreen, seq: seqScreen };
+    Object.keys(pages).forEach(k => {
+      if (pages[k]) pages[k].hidden = k !== m;
+    });
     host.style.setProperty('--pad', lineColor());
     modePads.forEach(b => {
       const on = b.dataset.mode === m;
@@ -261,12 +263,16 @@ if ('IntersectionObserver' in window) {
     paint();
   }
 
+  // the panel keeps one keyboard octave per track: kit low, chords high,
+  // bass between — the sequencer page and the keyboard page both print it
+  const partOctave = t => (t.type === 'DRUM' ? 1 : t.type === 'MONO' ? 2 : 4);
+
   function updateScreen() {
     const t = TRACKS[current];
     const v = voicesOf(t)[voice];
     if (scr.head) scr.head.textContent = 'CH ' + t.ch + ' ' + t.type + ' · ' + v.name;
-    // the panel's octave follows the part: kit low, chords high, bass between
-    if (scr.octave) scr.octave.textContent = String(t.type === 'DRUM' ? 1 : t.type === 'MONO' ? 2 : 4);
+    if (scr.octave) scr.octave.textContent = String(partOctave(t));
+    if (keyOct) keyOct.textContent = String(partOctave(t));
     if (scr.listen) scr.listen.textContent = t.type === 'MONO' ? 'NOTE' : 'CHORD';
     if (scr.overdub) scr.overdub.textContent = pinned ? 'ON' : 'OFF';
     if (scr.step) scr.step.textContent = String(step + 1).padStart(2, '0') + '/16';
