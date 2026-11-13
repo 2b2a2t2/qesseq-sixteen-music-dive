@@ -516,6 +516,9 @@ ol,ul{margin:0;padding:0;list-style:none}
 .scr-cell:nth-child(-n+4){border-top:0}
 .scr-cell b{font-weight:400;font-size:3.1cqw;color:#888c88;letter-spacing:0}
 .scr-cell span{font-size:3.33cqw;color:#fff;line-height:1;text-transform:none}
+.scr-cell span[role="button"]{cursor:pointer;border-radius:0.6cqw}
+.scr-cell span[role="button"]:hover{color:#00fcfc}
+.scr-cell span[role="button"]:focus-visible{outline:1px solid #00fcfc;outline-offset:1px}
 .scr-legend{
   display:grid;grid-template-columns:repeat(4,21.67cqw);
   grid-template-rows:repeat(3,1fr);gap:0 3.33cqw;padding-left:1.25cqw;

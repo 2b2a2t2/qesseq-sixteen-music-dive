@@ -70,6 +70,8 @@ if ('IntersectionObserver' in window) {
   const encScreen = document.querySelector('.scr--enc');
   const keyScreen = document.querySelector('.scr--key');
   const keyOct = document.querySelector('[data-scr="key-oct"]');
+  const keyScale = document.querySelector('[data-scr="key-scale"]');
+  const keyRoot = document.querySelector('[data-scr="key-root"]');
   // the screen reads back whatever the card is doing, the way the panel does
   const scr = {
     head: document.querySelector('[data-scr="head"]'),
@@ -82,16 +84,28 @@ if ('IntersectionObserver' in window) {
 
   // CH 1 is one DRUM track: the kit voices each keep their own 16-step line.
   // CH 2 POLY, CH 3 POLY SKANK following CH 2's progression, CH 4 MONO bass.
+  // the panel's scale list (Chords.cpp kScaleName) and its twelve roots:
+  // every channel keeps its own pair, like the firmware's per-channel memory
+  const SCALES = ['Chr', 'Major', 'Minor', 'HarmMin', 'MelMin', 'Dorian', 'Phryg',
+    'Lydian', 'Mixoly', 'Locrian', 'MajPent', 'MinPent', 'Blues', 'WhoTone',
+    'DimHW', 'DimWH', 'DbHarm', 'PhrDom', 'HunMin', 'Mishbrk', 'LydDom',
+    'Altered', 'BebopD', 'BebopM', 'LydAug', 'Mixb6', 'LocN2', 'Dor#4',
+    'Lyd#2', 'Ultra', 'Persian', 'NeaMin', 'NeaMaj', 'Augmnt', 'Promth',
+    'Enigm', 'Insen', 'Yo', 'Hirajo', 'HarmMaj', 'Mesia3', 'Mesia4', 'Mesia5',
+    'Mesia6', 'Mesia7', 'Span8', 'Saba', 'Iwato', 'Kumoi', 'PelogS', 'PelogT',
+    'Rast', 'Bayati', 'Hijaz'];
+  const ROOTS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
   const TRACKS = [
-    { ch: 1, type: 'DRUM', color: 'var(--led-red)', voices: [
+    { ch: 1, type: 'DRUM', scale: 0, root: 0, color: 'var(--led-red)', voices: [
       { name: 'KICK',  color: 'var(--led-red)',    pattern: 'x...x...x...x..x' },
       { name: 'SNARE', color: 'var(--led-white)',  pattern: '....x.......x...' },
       { name: 'HAT',   color: 'var(--led-cyan)',   pattern: '..x...x...x...xx' },
       { name: 'PERC',  color: 'var(--led-violet)', pattern: '.....x..x..x....' }
     ] },
-    { ch: 2, type: 'POLY', name: 'CHORDS', color: 'var(--led-blue)',  pattern: 'x.......x...x...' },
-    { ch: 3, type: 'POLY', name: 'SKANK',  color: 'var(--led-green)', follow: 'CH 2', pattern: '..x.x..x..x.x..x' },
-    { ch: 4, type: 'MONO', name: 'BASS',   color: 'var(--led-teal)',  pattern: 'x..x..x...x.x...' }
+    { ch: 2, type: 'POLY', name: 'CHORDS', scale: 1, root: 0, color: 'var(--led-blue)',  pattern: 'x.......x...x...' },
+    { ch: 3, type: 'POLY', name: 'SKANK',  scale: 5, root: 2, color: 'var(--led-green)', follow: 'CH 2', pattern: '..x.x..x..x.x..x' },
+    { ch: 4, type: 'MONO', name: 'BASS',   scale: 2, root: 9, color: 'var(--led-teal)',  pattern: 'x..x..x...x.x...' }
   ];
 
   const voicesOf = t => t.voices || [{ name: t.name, color: t.color, pattern: t.pattern }];
@@ -273,6 +287,16 @@ if ('IntersectionObserver' in window) {
     if (scr.head) scr.head.textContent = 'CH ' + t.ch + ' ' + t.type + ' · ' + v.name;
     if (scr.octave) scr.octave.textContent = String(partOctave(t));
     if (keyOct) keyOct.textContent = String(partOctave(t));
+    if (keyScale) {
+      const name = SCALES[t.scale] || SCALES[0];
+      keyScale.textContent = name;
+      keyScale.setAttribute('aria-label', 'Scale ' + name + ', click to change');
+    }
+    if (keyRoot) {
+      const root = ROOTS[t.root] || ROOTS[0];
+      keyRoot.textContent = root;
+      keyRoot.setAttribute('aria-label', 'Key ' + root + ', click to change');
+    }
     if (scr.listen) scr.listen.textContent = t.type === 'MONO' ? 'NOTE' : 'CHORD';
     if (scr.overdub) scr.overdub.textContent = pinned ? 'ON' : 'OFF';
     if (scr.step) scr.step.textContent = String(step + 1).padStart(2, '0') + '/16';
@@ -299,6 +323,29 @@ if ('IntersectionObserver' in window) {
     if (voice + 1 < list.length) selectVoice(voice + 1);
     else selectTrack((current + 1) % TRACKS.length, 0);
   }
+
+  // KEY page: SCALE and KEY are the keys' ENC2/ENC3 on the panel, and every
+  // channel keeps its own pair — step them with a click, the wheel or arrows
+  const stepSetting = (el, key, list) => {
+    if (!el) return;
+    const turn = dir => {
+      const t = TRACKS[current];
+      t[key] = (t[key] + dir + list.length) % list.length;
+      pinned = true;
+      updateScreen();
+    };
+    el.addEventListener('click', e => turn(e.shiftKey ? -1 : 1));
+    el.addEventListener('wheel', e => {
+      e.preventDefault();
+      turn(e.deltaY < 0 ? 1 : -1);
+    }, { passive: false });
+    el.addEventListener('keydown', e => {
+      if (e.key === 'ArrowUp' || e.key === 'ArrowRight') { e.preventDefault(); turn(1); }
+      if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') { e.preventDefault(); turn(-1); }
+    });
+  };
+  stepSetting(keyScale, 'scale', SCALES);
+  stepSetting(keyRoot, 'root', ROOTS);
 
   if (gridCard) gridCard.dataset.mode = mode;
   selectTrack(0, 0);
