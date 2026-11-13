@@ -448,20 +448,48 @@ ol,ul{margin:0;padding:0;list-style:none}
    Everything is sized in cqw so the whole screen scales with the card. */
 .panel__screen{
   grid-column:1 / span 7;aspect-ratio:480 / 320;
-  container-type:inline-size;
-  border-radius:2cqw;overflow:hidden;background:#000;
+  container-type:inline-size;position:relative;
+  border-radius:1cqw;overflow:hidden;background:#000;
   border:1px solid color-mix(in oklab,var(--foreground) 14%,transparent);
   box-shadow:0 0 18px color-mix(in oklab,var(--card-mode) 22%,transparent);
 }
 .scr{
-  width:100%;height:100%;display:grid;
+  position:absolute;inset:0;display:grid;
   grid-template-rows:7.083cqw 7.083cqw 31.25cqw 21.25cqw;
   font-family:var(--font-mono);text-transform:uppercase;
   color:#fff;letter-spacing:.04em;
 }
+.scr[hidden]{display:none}
+/* ENC page: one CC dial per cell — 270° ring, pointer across the rim,
+   value inside and the CC number in the ring's bottom notch */
+.scr-dial{position:relative;display:block;padding:0}
+.scr-dial::before{
+  content:"";position:absolute;left:50%;top:1.46cqw;transform:translateX(-50%);
+  width:10.83cqw;height:10.83cqw;border-radius:50%;
+  background:conic-gradient(from 225deg,#606060 0 270deg,transparent 270deg);
+}
+.scr-dial::after{
+  content:"";position:absolute;left:50%;top:2.72cqw;transform:translateX(-50%);
+  width:8.3cqw;height:8.3cqw;border-radius:50%;background:#000;
+}
+.scr-needle{
+  position:absolute;left:calc(50% - 0.21cqw);top:1.46cqw;z-index:2;
+  width:0.5cqw;height:5.42cqw;border-radius:1px;
+  background:linear-gradient(to top,transparent 0 58%,#00fcfc 58%);
+  transform-origin:50% 100%;
+  transform:rotate(calc(-135deg + 270deg * var(--v) / 127));
+}
+.scr-dial em{
+  position:absolute;left:0;right:0;top:5.9cqw;text-align:center;z-index:3;
+  font-style:normal;font-size:3.1cqw;line-height:3cqw;color:#fff;
+}
+.scr-dial b{
+  position:absolute;left:0;right:0;bottom:1.1cqw;text-align:center;z-index:3;
+  font-weight:400;font-size:2.9cqw;color:#888c88;
+}
 .scr-head{
   background:#181818;padding-left:2.5cqw;display:flex;align-items:center;
-  font-size:5.4cqw;font-weight:600;letter-spacing:.02em;
+  font-size:5.4cqw;font-weight:600;letter-spacing:.02em;line-height:1;
   box-shadow:inset 0 -0.42cqw 0 #00fcfc;
 }
 .scr-modes{
@@ -471,7 +499,7 @@ ol,ul{margin:0;padding:0;list-style:none}
 .scr-modes span{
   height:5.42cqw;display:flex;align-items:center;justify-content:center;
   border-radius:1.25cqw;background:#181818;color:#888c88;
-  font-size:3cqw;font-weight:600;letter-spacing:0;
+  font-size:3cqw;font-weight:600;letter-spacing:0;line-height:1;
 }
 .scr-modes .is-on{background:#00fcfc;color:#000}
 .scr-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 1fr}
@@ -491,7 +519,7 @@ ol,ul{margin:0;padding:0;list-style:none}
 .scr-legend span{
   height:5.42cqw;display:flex;align-items:center;justify-content:center;
   border-radius:1.25cqw;background:#181818;color:#888c88;
-  font-size:2.9cqw;font-weight:600;letter-spacing:0;
+  font-size:2.9cqw;font-weight:600;letter-spacing:0;line-height:1;
 }
 .scr-legend .is-on{background:#00fcfc;color:#000}
 .panel__encs{
@@ -502,16 +530,21 @@ ol,ul{margin:0;padding:0;list-style:none}
 .panel__enc{
   justify-self:center;position:relative;width:86%;aspect-ratio:1;border-radius:50%;
   display:grid;place-items:center;
-  border:1px solid color-mix(in oklab,var(--mode-enc) 42%,transparent);
+  border:1px solid color-mix(in oklab,var(--mode-enc) 55%,transparent);
   background:
-    radial-gradient(circle at 50% 34%,color-mix(in oklab,var(--mode-enc) 20%,transparent),transparent 62%),
-    color-mix(in oklab,var(--background) 74%,transparent);
-  box-shadow:0 0 12px color-mix(in oklab,var(--mode-enc) 26%,transparent);
+    radial-gradient(circle at 50% 28%,color-mix(in oklab,var(--mode-enc) 40%,transparent),transparent 60%),
+    radial-gradient(circle at 50% 62%,#1b1f27,#05070b 74%);
+  box-shadow:
+    0 0 0 1px color-mix(in oklab,var(--mode-enc) 30%,transparent),
+    0 0 16px color-mix(in oklab,var(--mode-enc) 45%,transparent),
+    inset 0 1px 0 rgba(255,255,255,.08);
 }
 .panel__enc::before{
-  content:"";width:60%;aspect-ratio:1;border-radius:50%;
-  border:1px solid color-mix(in oklab,var(--foreground) 18%,transparent);
-  background:color-mix(in oklab,var(--surface) 90%,transparent);
+  content:"";width:66%;aspect-ratio:1;border-radius:50%;
+  border:1px solid rgba(255,255,255,.14);
+  background:
+    radial-gradient(circle at 42% 32%,#4a505c,#20242c 58%,#0f1218 100%);
+  box-shadow:inset 0 -2px 4px rgba(0,0,0,.6),0 1px 2px rgba(0,0,0,.5);
 }
 .panel__enc::after{
   content:"";position:absolute;top:14%;width:2px;height:20%;border-radius:1px;

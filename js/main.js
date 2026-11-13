@@ -66,6 +66,8 @@ if ('IntersectionObserver' in window) {
   // the three mode pads tint the card: ENC purple, KEY teal, SEQ keeps the
   // per-track colours the sequencer actually lights
   const modePads = [...document.querySelectorAll('#stepgrid .panel__mode')];
+  const seqScreen = document.querySelector('.scr--seq');
+  const encScreen = document.querySelector('.scr--enc');
   let mode = 'seq';
 
   // CH 1 is one DRUM track: the kit voices each keep their own 16-step line.
@@ -139,6 +141,12 @@ if ('IntersectionObserver' in window) {
   function applyMode(m) {
     mode = m;
     if (gridCard) gridCard.dataset.mode = m;
+    // the display shows the page that belongs to the mode: dials in ENC
+    if (seqScreen && encScreen) {
+      const isEnc = m === 'enc';
+      encScreen.hidden = !isEnc;
+      seqScreen.hidden = isEnc;
+    }
     host.style.setProperty('--pad', lineColor());
     modePads.forEach(b => {
       const on = b.dataset.mode === m;

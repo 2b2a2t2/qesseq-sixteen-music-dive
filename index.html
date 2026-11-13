@@ -158,8 +158,8 @@
             <div class="stepgrid__scroll">
               <div class="panelpanel">
                 <div class="panel__top">
-                  <div class="panel__screen" role="group" aria-label="The 480 by 320 display, on its sequencer page">
-                    <div class="scr">
+                  <div class="panel__screen" role="group" aria-label="The 480 by 320 display, showing the page of the selected mode">
+                    <div class="scr scr--seq">
                       <div class="scr-head">SEQUENCER</div>
                       <div class="scr-modes">
                         <span>ENCODER</span>
@@ -180,6 +180,35 @@
                         <span style="grid-area:1 / 1">PREV</span>
                         <span style="grid-area:1 / 2">NEXT</span>
                         <span class="is-on" style="grid-area:2 / 1">EDIT</span>
+                        <span style="grid-area:2 / 2">GENERATE</span>
+                        <span style="grid-area:2 / 3">GENERATE</span>
+                        <span style="grid-area:3 / 1">TIE</span>
+                        <span style="grid-area:3 / 2">GLIDE</span>
+                        <span style="grid-area:3 / 3">ACCENT</span>
+                        <span style="grid-area:3 / 4">PROBABILITY</span>
+                      </div>
+                    </div>
+                    <div class="scr scr--enc" hidden>
+                      <div class="scr-head">ENCODER</div>
+                      <div class="scr-modes">
+                        <span class="is-on">ENCODER</span>
+                        <span>SEQUENCER</span>
+                        <span>KEYBOARD</span>
+                      </div>
+                      <div class="scr-grid">
+                        <div class="scr-cell scr-dial" style="--v:64"><i class="scr-needle"></i><em>64</em><b>CC17</b></div>
+                        <div class="scr-cell scr-dial" style="--v:32"><i class="scr-needle"></i><em>32</em><b>CC18</b></div>
+                        <div class="scr-cell scr-dial" style="--v:96"><i class="scr-needle"></i><em>96</em><b>CC19</b></div>
+                        <div class="scr-cell scr-dial" style="--v:40"><i class="scr-needle"></i><em>40</em><b>CC20</b></div>
+                        <div class="scr-cell scr-dial" style="--v:72"><i class="scr-needle"></i><em>72</em><b>CC1</b></div>
+                        <div class="scr-cell scr-dial" style="--v:20"><i class="scr-needle"></i><em>20</em><b>CC2</b></div>
+                        <div class="scr-cell scr-dial" style="--v:108"><i class="scr-needle"></i><em>108</em><b>CC3</b></div>
+                        <div class="scr-cell scr-dial" style="--v:56"><i class="scr-needle"></i><em>56</em><b>CC4</b></div>
+                      </div>
+                      <div class="scr-legend">
+                        <span style="grid-area:1 / 1">PREV</span>
+                        <span style="grid-area:1 / 2">NEXT</span>
+                        <span style="grid-area:2 / 1">EDIT</span>
                         <span style="grid-area:2 / 2">GENERATE</span>
                         <span style="grid-area:2 / 3">GENERATE</span>
                         <span style="grid-area:3 / 1">TIE</span>
