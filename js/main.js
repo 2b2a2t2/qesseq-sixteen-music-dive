@@ -78,7 +78,10 @@ if ('IntersectionObserver' in window) {
     octave: document.querySelector('[data-scr="octave"]'),
     listen: document.querySelector('[data-scr="listen"]'),
     overdub: document.querySelector('[data-scr="overdub"]'),
-    step: document.querySelector('[data-scr="step"]')
+    step: document.querySelector('[data-scr="step"]'),
+    gate: document.querySelector('[data-scr="gate"]'),
+    velocity: document.querySelector('[data-scr="velocity"]'),
+    probability: document.querySelector('[data-scr="probability"]')
   };
   let mode = 'seq';
 
@@ -108,15 +111,19 @@ if ('IntersectionObserver' in window) {
   const panelKeys = [...document.querySelectorAll('#stepgrid .panel__key[data-note]')];
 
   const TRACKS = [
-    { ch: 1, type: 'DRUM', scale: 0, root: 0, color: 'var(--led-red)', voices: [
+    { ch: 1, type: 'DRUM', scale: 0, root: 0, oct: 1, listen: 'CHORD', gate: 100, vel: 90, prob: 100,
+      color: 'var(--led-red)', voices: [
       { name: 'KICK',  color: 'var(--led-red)',    pattern: 'x...x...x...x..x' },
       { name: 'SNARE', color: 'var(--led-white)',  pattern: '....x.......x...' },
       { name: 'HAT',   color: 'var(--led-cyan)',   pattern: '..x...x...x...xx' },
       { name: 'PERC',  color: 'var(--led-violet)', pattern: '.....x..x..x....' }
     ] },
-    { ch: 2, type: 'POLY', name: 'CHORDS', scale: 1, root: 0, color: 'var(--led-blue)',  pattern: 'x.......x...x...' },
-    { ch: 3, type: 'POLY', name: 'SKANK',  scale: 5, root: 2, color: 'var(--led-green)', follow: 'CH 2', pattern: '..x.x..x..x.x..x' },
-    { ch: 4, type: 'MONO', name: 'BASS',   scale: 2, root: 9, color: 'var(--led-teal)',  pattern: 'x..x..x...x.x...' }
+    { ch: 2, type: 'POLY', name: 'CHORDS', scale: 1, root: 0, oct: 4, listen: 'CHORD', gate: 100, vel: 90, prob: 100,
+      color: 'var(--led-blue)',  pattern: 'x.......x...x...' },
+    { ch: 3, type: 'POLY', name: 'SKANK',  scale: 5, root: 2, oct: 4, listen: 'CHORD', gate: 100, vel: 90, prob: 100,
+      color: 'var(--led-green)', follow: 'CH 2', pattern: '..x.x..x..x.x..x' },
+    { ch: 4, type: 'MONO', name: 'BASS',   scale: 2, root: 9, oct: 2, listen: 'NOTE',  gate: 100, vel: 90, prob: 100,
+      color: 'var(--led-teal)',  pattern: 'x..x..x...x.x...' }
   ];
 
   const voicesOf = t => t.voices || [{ name: t.name, color: t.color, pattern: t.pattern }];
@@ -188,6 +195,8 @@ if ('IntersectionObserver' in window) {
       b.classList.toggle('is-on', on);
       b.setAttribute('aria-pressed', String(on));
     });
+    // the knobs move to the page's own values when the page changes
+    refreshKnobs();
   }
 
   modePads.forEach(b => {
@@ -199,11 +208,46 @@ if ('IntersectionObserver' in window) {
   const encKnobs = [...document.querySelectorAll('#stepgrid .panel__enc')];
   const encDials = [...document.querySelectorAll('.scr--enc .scr-dial')];
   const encVals = [64, 32, 96, 40, 72, 20, 108, 56];
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-  function setEnc(i, val) {
-    const v = Math.max(0, Math.min(127, Math.round(val)));
+  // What a knob turns depends on the page the panel is on, cell by cell: the
+  // CC numbers on the encoder page, the eight cells on the sequencer page,
+  // OCT / SCALE / KEY on the keyboard page.  PLAY, OVERDUB and STEP only read
+  // back there, so those three knobs have nothing of their own to turn.
+  const SEQ_KNOBS = [
+    { key: 'oct',    min: 0, max: 7 },                 // OCTAVE
+    { key: 'listen', options: ['CHORD', 'NOTE'] },     // LISTEN
+    null,                                             // PLAY
+    null,                                             // OVERDUB
+    { key: 'gate',   min: 0, max: 100, step: 5 },      // GATE
+    { key: 'vel',    min: 1, max: 127 },               // VELOCITY
+    null,                                             // STEP
+    { key: 'prob',   min: 0, max: 100, step: 5 }       // PROBABILITY
+  ];
+  const KEY_KNOBS = ['oct', 'scale', 'root'];
+
+  const paramPos = (v, min, max) => clamp(Math.round(((v - min) / (max - min)) * 127), 0, 127);
+
+  function knobPos(i) {
+    const t = TRACKS[current];
+    if (mode === 'enc') return encVals[i];
+    if (mode === 'key') {
+      const k = KEY_KNOBS[i];
+      if (k === 'oct') return paramPos(t.oct, 0, 7);
+      if (k === 'scale') return paramPos(t.scale, 0, SCALES.length - 1);
+      if (k === 'root') return paramPos(t.root, 0, ROOTS.length - 1);
+      return 0;
+    }
+    const spec = SEQ_KNOBS[i];
+    if (!spec) return 0;
+    if (spec.options) return paramPos(spec.options.indexOf(t[spec.key]), 0, spec.options.length - 1);
+    return paramPos(t[spec.key], spec.min, spec.max);
+  }
+
+  // the CC side of a knob: only the encoder page has dials to show it
+  function setCc(i, val) {
+    const v = clamp(Math.round(val), 0, 127);
     encVals[i] = v;
-    if (encKnobs[i]) encKnobs[i].style.setProperty('--v', v);
     const dial = encDials[i];
     if (!dial) return;
     dial.style.setProperty('--v', v);
@@ -211,40 +255,89 @@ if ('IntersectionObserver' in window) {
     if (out) out.textContent = v;
   }
 
+  function refreshKnobs() {
+    encKnobs.forEach((k, i) => k.style.setProperty('--v', knobPos(i)));
+  }
+
+  // One detent of a knob, in that page's own units: CC counts on the encoder
+  // page, one step of the cell under it on the other two — an octave, a scale,
+  // a root, a 5% gate step, one velocity.  So a click, a wheel notch, an arrow
+  // key and 12px of drag all move exactly one meaningful step.
+  function nudge(i, steps) {
+    if (mode === 'enc') {
+      setCc(i, encVals[i] + steps * 4);
+      refreshKnobs();
+      updateScreen();
+      return;
+    }
+    const t = TRACKS[current];
+    if (mode === 'key') {
+      const k = KEY_KNOBS[i];
+      if (k === 'oct') t.oct = clamp(t.oct + steps, 0, 7);
+      else if (k === 'scale') t.scale = (t.scale + steps + SCALES.length) % SCALES.length;
+      else if (k === 'root') t.root = (t.root + steps + ROOTS.length) % ROOTS.length;
+      else return;
+    } else {
+      const spec = SEQ_KNOBS[i];
+      if (!spec) return;
+      if (spec.options) {
+        const n = spec.options.length;
+        t[spec.key] = spec.options[(spec.options.indexOf(t[spec.key]) + steps + n) % n];
+      } else {
+        const stp = spec.step || 1;
+        t[spec.key] = clamp(t[spec.key] + steps * stp, spec.min, spec.max);
+      }
+    }
+    updateScreen();
+    refreshKnobs();
+  }
+
   encKnobs.forEach((k, i) => {
     let drag = null;
     let moved = false;
-    const turn = d => setEnc(i, encVals[i] + d);
-    setEnc(i, encVals[i]);
 
     k.addEventListener('click', () => {
       if (moved) { moved = false; return; }
-      pinned = true; turn(8); updateScreen();
+      pinned = true;
+      nudge(i, mode === 'enc' ? 2 : 1);
     });
     k.addEventListener('wheel', e => {
       e.preventDefault(); pinned = true;
-      turn(e.deltaY < 0 ? 4 : -4); updateScreen();
+      nudge(i, e.deltaY < 0 ? 1 : -1);
     }, { passive: false });
     k.addEventListener('keydown', e => {
-      const d = e.key === 'ArrowUp' || e.key === 'ArrowRight' ? 2
-        : e.key === 'ArrowDown' || e.key === 'ArrowLeft' ? -2 : 0;
-      if (!d) return;
-      e.preventDefault(); pinned = true; turn(d); updateScreen();
+      const dir = e.key === 'ArrowUp' || e.key === 'ArrowRight' ? 1
+        : e.key === 'ArrowDown' || e.key === 'ArrowLeft' ? -1 : 0;
+      if (!dir) return;
+      e.preventDefault(); pinned = true; nudge(i, dir);
     });
     k.addEventListener('pointerdown', e => {
-      drag = { y: e.clientY, v: encVals[i] }; moved = false; pinned = true;
+      drag = { y: e.clientY, cc: encVals[i], acc: 0 }; moved = false; pinned = true;
       k.setPointerCapture(e.pointerId);
     });
     k.addEventListener('pointermove', e => {
       if (!drag) return;
-      const d = (drag.y - e.clientY) * 1.2;
-      if (Math.abs(d) > 2) moved = true;
-      setEnc(i, drag.v + d);
+      if (mode === 'enc') {
+        const d = (drag.y - e.clientY) * 1.2;
+        if (Math.abs(d) > 2) moved = true;
+        setCc(i, drag.cc + d);
+        k.style.setProperty('--v', encVals[i]);
+        updateScreen();
+        return;
+      }
+      drag.acc += (drag.y - e.clientY) * 1.2;
+      const steps = Math.trunc(drag.acc / 12);
+      if (!steps) return;
+      drag.acc -= steps * 12;
+      moved = true;
+      nudge(i, steps);
     });
     const end = () => { drag = null; };
     k.addEventListener('pointerup', end);
     k.addEventListener('pointercancel', end);
   });
+
+  refreshKnobs();
 
   function buildLine() {
     const t = TRACKS[current];
@@ -288,16 +381,12 @@ if ('IntersectionObserver' in window) {
     paint();
   }
 
-  // the panel keeps one keyboard octave per track: kit low, chords high,
-  // bass between — the sequencer page and the keyboard page both print it
-  const partOctave = t => (t.type === 'DRUM' ? 1 : t.type === 'MONO' ? 2 : 4);
-
   function updateScreen() {
     const t = TRACKS[current];
     const v = voicesOf(t)[voice];
     if (scr.head) scr.head.textContent = 'CH ' + t.ch + ' ' + t.type + ' · ' + v.name;
-    if (scr.octave) scr.octave.textContent = String(partOctave(t));
-    if (keyOct) keyOct.textContent = String(partOctave(t));
+    if (scr.octave) scr.octave.textContent = String(t.oct);
+    if (keyOct) keyOct.textContent = String(t.oct);
     if (keyScale) {
       const name = SCALES[t.scale] || SCALES[0];
       keyScale.textContent = name;
@@ -317,7 +406,10 @@ if ('IntersectionObserver' in window) {
       k.classList.toggle('is-out', !inScale);
       k.classList.toggle('is-root', inScale && n === t.root);
     });
-    if (scr.listen) scr.listen.textContent = t.type === 'MONO' ? 'NOTE' : 'CHORD';
+    if (scr.listen) scr.listen.textContent = t.listen;
+    if (scr.gate) scr.gate.textContent = t.gate + '%';
+    if (scr.velocity) scr.velocity.textContent = String(t.vel);
+    if (scr.probability) scr.probability.textContent = t.prob + '%';
     if (scr.overdub) scr.overdub.textContent = pinned ? 'ON' : 'OFF';
     if (scr.step) scr.step.textContent = String(step + 1).padStart(2, '0') + '/16';
   }
@@ -335,6 +427,7 @@ if ('IntersectionObserver' in window) {
       (t.follow ? ' ← ' + t.follow : '');
     trackLabel.textContent = label;
     updateScreen();
+    refreshKnobs();
   }
 
   // the panel walks the tracks; CH 1 stops on each kit voice on the way
