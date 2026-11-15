@@ -78,8 +78,9 @@ if ('IntersectionObserver' in window) {
     octave: document.querySelector('[data-scr="octave"]'),
     listen: document.querySelector('[data-scr="listen"]'),
     overdub: document.querySelector('[data-scr="overdub"]'),
-    step: document.querySelector('[data-scr="step"]'),
+    play: document.querySelector('[data-scr="play"]'),
     gate: document.querySelector('[data-scr="gate"]'),
+    accent: document.querySelector('[data-scr="accent"]'),
     velocity: document.querySelector('[data-scr="velocity"]'),
     probability: document.querySelector('[data-scr="probability"]')
   };
@@ -111,18 +112,22 @@ if ('IntersectionObserver' in window) {
   const panelKeys = [...document.querySelectorAll('#stepgrid .panel__key[data-note]')];
 
   const TRACKS = [
-    { ch: 1, type: 'DRUM', scale: 0, root: 0, oct: 1, listen: 'CHORD', gate: 100, vel: 90, prob: 100,
+    { ch: 1, type: 'DRUM', scale: 0, root: 0, oct: 1, listen: 'CHORD', play: 'GATE', overdub: 'OFF',
+      gate: 100, vel: 90, acc: 101, prob: 100,
       color: 'var(--led-red)', voices: [
       { name: 'KICK',  color: 'var(--led-red)',    pattern: 'x...x...x...x..x' },
       { name: 'SNARE', color: 'var(--led-white)',  pattern: '....x.......x...' },
       { name: 'HAT',   color: 'var(--led-cyan)',   pattern: '..x...x...x...xx' },
       { name: 'PERC',  color: 'var(--led-violet)', pattern: '.....x..x..x....' }
     ] },
-    { ch: 2, type: 'POLY', name: 'CHORDS', scale: 1, root: 0, oct: 4, listen: 'CHORD', gate: 100, vel: 90, prob: 100,
+    { ch: 2, type: 'POLY', name: 'CHORDS', scale: 1, root: 0, oct: 4, listen: 'CHORD', play: 'GATE', overdub: 'OFF',
+      gate: 100, vel: 90, acc: 101, prob: 100,
       color: 'var(--led-blue)',  pattern: 'x.......x...x...' },
-    { ch: 3, type: 'POLY', name: 'SKANK',  scale: 5, root: 2, oct: 4, listen: 'CHORD', gate: 100, vel: 90, prob: 100,
+    { ch: 3, type: 'POLY', name: 'SKANK',  scale: 5, root: 2, oct: 4, listen: 'CHORD', play: 'GATE', overdub: 'OFF',
+      gate: 100, vel: 90, acc: 101, prob: 100,
       color: 'var(--led-green)', follow: 'CH 2', pattern: '..x.x..x..x.x..x' },
-    { ch: 4, type: 'MONO', name: 'BASS',   scale: 2, root: 9, oct: 2, listen: 'NOTE',  gate: 100, vel: 90, prob: 100,
+    { ch: 4, type: 'MONO', name: 'BASS',   scale: 2, root: 9, oct: 2, listen: 'CHORD', play: 'GATE', overdub: 'OFF',
+      gate: 100, vel: 90, acc: 101, prob: 100,
       color: 'var(--led-teal)',  pattern: 'x..x..x...x.x...' }
   ];
 
@@ -212,17 +217,20 @@ if ('IntersectionObserver' in window) {
 
   // What a knob turns depends on the page the panel is on, cell by cell: the
   // CC numbers on the encoder page, the eight cells on the sequencer page,
-  // OCT / SCALE / KEY on the keyboard page.  PLAY, OVERDUB and STEP only read
-  // back there, so those three knobs have nothing of their own to turn.
+  // OCT / SCALE / KEY on the keyboard page.  The sequencer row is the panel's
+  // own table (Bindings.cpp encLabels[ENC_SEQ], Display.cpp for the values),
+  // and a DRUM track has no record options, so LISTEN / PLAY / OVERDUB are
+  // blank there and their three knobs stay dead.
+  const recOnly = t => t.type !== 'DRUM';
   const SEQ_KNOBS = [
-    { key: 'oct',    min: 0, max: 7 },                 // OCTAVE
-    { key: 'listen', options: ['CHORD', 'NOTE'] },     // LISTEN
-    null,                                             // PLAY
-    null,                                             // OVERDUB
-    { key: 'gate',   min: 0, max: 100, step: 5 },      // GATE
-    { key: 'vel',    min: 1, max: 127 },               // VELOCITY
-    null,                                             // STEP
-    { key: 'prob',   min: 0, max: 100, step: 5 }       // PROBABILITY
+    { key: 'oct',     min: 0, max: 7 },                                // OCT
+    { key: 'listen',  options: ['CHORD', 'NOTE'], only: recOnly },     // LISTEN
+    { key: 'play',    options: ['GATE', 'RECORDED'], only: recOnly },  // PLAY
+    { key: 'overdub', options: ['OFF', 'ON'], only: recOnly },         // OVERDUB
+    { key: 'gate',    min: 10, max: 100 },                             // GATE
+    { key: 'vel',     min: 1, max: 127 },                              // VEL
+    { key: 'acc',     min: 1, max: 127 },                              // ACC
+    { key: 'prob',    min: 0, max: 100 }                               // PROB
   ];
   const KEY_KNOBS = ['oct', 'scale', 'root'];
 
@@ -239,7 +247,7 @@ if ('IntersectionObserver' in window) {
       return 0;
     }
     const spec = SEQ_KNOBS[i];
-    if (!spec) return 0;
+    if (!spec || (spec.only && !spec.only(t))) return 0;
     if (spec.options) return paramPos(spec.options.indexOf(t[spec.key]), 0, spec.options.length - 1);
     return paramPos(t[spec.key], spec.min, spec.max);
   }
@@ -279,7 +287,7 @@ if ('IntersectionObserver' in window) {
       else return;
     } else {
       const spec = SEQ_KNOBS[i];
-      if (!spec) return;
+      if (!spec || (spec.only && !spec.only(t))) return;
       if (spec.options) {
         const n = spec.options.length;
         t[spec.key] = spec.options[(spec.options.indexOf(t[spec.key]) + steps + n) % n];
@@ -406,12 +414,15 @@ if ('IntersectionObserver' in window) {
       k.classList.toggle('is-out', !inScale);
       k.classList.toggle('is-root', inScale && n === t.root);
     });
-    if (scr.listen) scr.listen.textContent = t.listen;
+    // a DRUM track has no record options: LISTEN, PLAY and OVERDUB read blank
+    const drum = t.type === 'DRUM';
+    if (scr.listen) scr.listen.textContent = drum ? '—' : t.listen;
+    if (scr.play) scr.play.textContent = drum ? '—' : t.play;
+    if (scr.overdub) scr.overdub.textContent = drum ? '—' : t.overdub;
     if (scr.gate) scr.gate.textContent = t.gate + '%';
     if (scr.velocity) scr.velocity.textContent = String(t.vel);
+    if (scr.accent) scr.accent.textContent = String(t.acc);
     if (scr.probability) scr.probability.textContent = t.prob + '%';
-    if (scr.overdub) scr.overdub.textContent = pinned ? 'ON' : 'OFF';
-    if (scr.step) scr.step.textContent = String(step + 1).padStart(2, '0') + '/16';
   }
 
   function paint() {
