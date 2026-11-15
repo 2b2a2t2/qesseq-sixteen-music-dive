@@ -85,6 +85,9 @@ if ('IntersectionObserver' in window) {
     probability: document.querySelector('[data-scr="probability"]')
   };
   let mode = 'seq';
+  // M1 arms the sequencer page's step-edit row; without it the record knobs
+  // (LISTEN / PLAY / OVERDUB) are idle labels that do not turn
+  let stepEdit = false;
 
   // CH 1 is one DRUM track: the kit voices each keep their own 16-step line.
   // CH 2 POLY, CH 3 POLY SKANK following CH 2's progression, CH 4 MONO bass.
@@ -110,6 +113,8 @@ if ('IntersectionObserver' in window) {
     0x18D, 0x6AD, 0x6AB, 0x5B3
   ];
   const panelKeys = [...document.querySelectorAll('#stepgrid .panel__key[data-note]')];
+  const stepEditArm = document.getElementById('stepEditArm');
+  const editLegend = document.querySelector('[data-scr="edit-legend"]');
 
   const TRACKS = [
     { ch: 1, type: 'DRUM', scale: 0, root: 0, oct: 1, listen: 'CHORD', play: 'GATE', overdub: 'OFF',
@@ -208,6 +213,16 @@ if ('IntersectionObserver' in window) {
     b.addEventListener('click', () => { pinned = true; applyMode(b.dataset.mode); updateScreen(); });
   });
 
+  if (stepEditArm) {
+    stepEditArm.addEventListener('click', () => {
+      stepEdit = !stepEdit;
+      pinned = true;
+      stepEditArm.setAttribute('aria-pressed', String(stepEdit));
+      updateScreen();
+      refreshKnobs();
+    });
+  }
+
   // ENC page: each knob turns the CC its encoder is bound to, and the dial
   // under it in the display follows — drag, scroll, click or arrow keys.
   const encKnobs = [...document.querySelectorAll('#stepgrid .panel__enc')];
@@ -221,7 +236,7 @@ if ('IntersectionObserver' in window) {
   // own table (Bindings.cpp encLabels[ENC_SEQ], Display.cpp for the values),
   // and a DRUM track has no record options, so LISTEN / PLAY / OVERDUB are
   // blank there and their three knobs stay dead.
-  const recOnly = t => t.type !== 'DRUM';
+  const recOnly = t => stepEdit && t.type !== 'DRUM';
   const SEQ_KNOBS = [
     { key: 'oct',     min: 0, max: 7 },                                // OCT
     { key: 'listen',  options: ['CHORD', 'NOTE'], only: recOnly },     // LISTEN
@@ -414,11 +429,13 @@ if ('IntersectionObserver' in window) {
       k.classList.toggle('is-out', !inScale);
       k.classList.toggle('is-root', inScale && n === t.root);
     });
-    // a DRUM track has no record options: LISTEN, PLAY and OVERDUB read blank
-    const drum = t.type === 'DRUM';
-    if (scr.listen) scr.listen.textContent = drum ? '—' : t.listen;
-    if (scr.play) scr.play.textContent = drum ? '—' : t.play;
-    if (scr.overdub) scr.overdub.textContent = drum ? '—' : t.overdub;
+    // LISTEN, PLAY and OVERDUB are the M1 step-edit row: they read blank until
+    // M1 arms it, and a DRUM track has no record options at all
+    const idle = !stepEdit || t.type === 'DRUM';
+    if (scr.listen) scr.listen.textContent = idle ? '—' : t.listen;
+    if (scr.play) scr.play.textContent = idle ? '—' : t.play;
+    if (scr.overdub) scr.overdub.textContent = idle ? '—' : t.overdub;
+    if (editLegend) editLegend.classList.toggle('is-on', stepEdit);
     if (scr.gate) scr.gate.textContent = t.gate + '%';
     if (scr.velocity) scr.velocity.textContent = String(t.vel);
     if (scr.accent) scr.accent.textContent = String(t.acc);

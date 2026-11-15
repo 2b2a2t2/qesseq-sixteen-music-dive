@@ -606,6 +606,18 @@ ol,ul{margin:0;padding:0;list-style:none}
   opacity:1;
   box-shadow:0 0 10px color-mix(in oklab,var(--mode-key) 45%,transparent);
 }
+/* M1 on the card is a real key: it arms the sequencer page's record knobs */
+.panel__pad--arm{
+  cursor:pointer;font-family:inherit;
+  transition:color .25s,border-color .25s,background .25s,box-shadow .25s;
+}
+.panel__pad--arm:hover{color:var(--foreground);border-color:color-mix(in oklab,var(--mode-seq) 45%,transparent)}
+.panel__pad--arm[aria-pressed="true"]{
+  color:var(--foreground);border-color:var(--mode-seq);
+  background:color-mix(in oklab,var(--mode-seq) 16%,transparent);
+  box-shadow:0 0 10px color-mix(in oklab,var(--mode-seq) 40%,transparent);
+}
+.panel__pad--arm:focus-visible{outline:1px solid var(--mode-seq);outline-offset:1px}
 .panel__mode{
   cursor:pointer;font-family:inherit;
   border:1px solid color-mix(in oklab,var(--mode) 30%,transparent);
