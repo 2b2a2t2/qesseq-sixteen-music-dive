@@ -69,6 +69,13 @@ if ('IntersectionObserver' in window) {
   const seqScreen = document.querySelector('.scr--seq');
   const encScreen = document.querySelector('.scr--enc');
   const keyScreen = document.querySelector('.scr--key');
+  const rowScreen = document.querySelector('.scr--row');
+  const rowHead = document.querySelector('[data-scr="row-head"]');
+  const rowNote = document.querySelector('[data-scr="row-note"]');
+  const encHead = document.querySelector('[data-scr="enc-head"]');
+  const rowModes = [...document.querySelectorAll('.scr--row .scr-modes span')];
+  const rowCells = [...document.querySelectorAll('.scr--row .scr-grid .scr-cell')]
+    .map(cell => ({ b: cell.querySelector('b'), s: cell.querySelector('span') }));
   const keyOct = document.querySelector('[data-scr="key-oct"]');
   const keyScale = document.querySelector('[data-scr="key-scale"]');
   const keyRoot = document.querySelector('[data-scr="key-root"]');
@@ -121,7 +128,7 @@ if ('IntersectionObserver' in window) {
   const targetButtons = [...document.querySelectorAll('#stepgrid [data-target]')];
   const pagePad = document.getElementById('pagePad');
   const pageLegend = document.querySelector('[data-scr="page-legend"]');
-  const seqCells = [...document.querySelectorAll('.scr--seq .scr-grid .scr-cell')]
+  const seqCells = [...document.querySelectorAll('.scr--seq:not(.scr--row) .scr-grid .scr-cell')]
     .map(cell => ({ b: cell.querySelector('b'), s: cell.querySelector('span') }));
   const baseLabels = seqCells.map(c => (c.b ? c.b.textContent : ''));
 
@@ -150,6 +157,14 @@ if ('IntersectionObserver' in window) {
   ];
 
   const voicesOf = t => t.voices || [{ name: t.name, color: t.color, pattern: t.pattern }];
+  // the row the higher variants show, per track (SEQMODE3/4, KEYMODE2/3/4)
+  TRACKS.forEach(t => {
+    t.row = {
+      len: 16, follow: t.follow ? 1 : 0, speed: 2, inch: 0, track: t.ch,
+      swing: 0, amt: 50,
+      genre: 0, mood: 50, tens: 50, motion: 50, cad: 0, cpx: 50, phrase: 0, surp: 50
+    };
+  });
   const state = TRACKS.map(t => voicesOf(t).map(v => v.pattern.split('').map(c => c === 'x')));
   // per-step attributes, the ones the M1 edit row's F keys select: a bitmask
   // per step, so a step can carry TIE and ACCENT at once (Events.cpp stepAttrs)
@@ -158,6 +173,8 @@ if ('IntersectionObserver' in window) {
   const attrs = TRACKS.map(t => voicesOf(t).map(() => new Uint8Array(16)));
   let editTarget = 0;                                  // 0 = STEPS, 1..4 = F keys
   let pageOpen = false;                                // the M2 page of this track
+  const variant = { enc: 1, seq: 1, key: 1 };          // ENC/SEQ/KEY 1..4
+  const clock = { bpm: 120 };                          // SEQMODE3's BPM is global
   const tabs = [];
   const voiceTabs = [];
   let cells = [];
@@ -214,12 +231,20 @@ if ('IntersectionObserver' in window) {
     mode = m;
     pageOpen = false;      // the page only lives on the sequencer screen
     if (gridCard) gridCard.dataset.mode = m;
-    // the display shows the page that belongs to the mode: dials in ENC,
-    // the keyboard page in KEY, the sequencer page otherwise
+    // the display shows the page that belongs to the mode and variant: dials
+    // in ENC (one CC bank each), the keyboard screen in KEY 1, the sequencer
+    // screen in SEQ 1/2, and the variant row everywhere above that
     const pages = { enc: encScreen, key: keyScreen, seq: seqScreen };
-    Object.keys(pages).forEach(k => {
-      if (pages[k]) pages[k].hidden = k !== m;
+    const show = rowKey() !== null ? rowScreen : pages[m];
+    [encScreen, keyScreen, seqScreen, rowScreen].forEach(el => {
+      if (el) el.hidden = el !== show;
     });
+    if (encHead) encHead.textContent = 'ENCODER' + (variant.enc > 1 ? ' ' + variant.enc : '');
+    if (m === 'enc') {
+      encVals = encBanks[variant.enc - 1];
+      encVals.forEach((v, i) => setCc(i, v));
+    }
+    renderRow();
     host.style.setProperty('--pad', lineColor());
     modePads.forEach(b => {
       const on = b.dataset.mode === m;
@@ -231,7 +256,14 @@ if ('IntersectionObserver' in window) {
   }
 
   modePads.forEach(b => {
-    b.addEventListener('click', () => { pinned = true; applyMode(b.dataset.mode); paint(); });
+          b.addEventListener('click', () => {
+        pinned = true;
+        // a second click on the mode you are already in steps its variant
+        const m = b.dataset.mode;
+        variant[m] = mode === m ? variant[m] % 4 + 1 : 1;
+        applyMode(m);
+        paint();
+      });
   });
 
   if (stepEditArm) {
@@ -247,7 +279,15 @@ if ('IntersectionObserver' in window) {
   // under it in the display follows — drag, scroll, click or arrow keys.
   const encKnobs = [...document.querySelectorAll('#stepgrid .panel__enc')];
   const encDials = [...document.querySelectorAll('.scr--enc .scr-dial')];
-  const encVals = [64, 32, 96, 40, 72, 20, 108, 56];
+  // ENC 1..4 are one CC row over four banks, so each variant keeps its own
+  // values on the same CC17..CC4 labels (Bindings.cpp ENC_ENC..ENC_ENC4)
+  const encBanks = [
+    [64, 32, 96, 40, 72, 20, 108, 56],
+    [0, 0, 0, 0, 64, 64, 64, 64],
+    [0, 0, 0, 0, 64, 64, 64, 64],
+    [0, 0, 0, 0, 64, 64, 64, 64]
+  ];
+  let encVals = encBanks[0];
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
   // What a knob turns depends on the page the panel is on, cell by cell: the
@@ -330,11 +370,107 @@ if ('IntersectionObserver' in window) {
     : t.name === 'SKANK' ? 'skank'
     : t.name === 'CHORDS' ? 'comp' : null;
 
+  // the higher variants' rows, in the firmware's own label order (Bindings.cpp
+  // encLabels): SEQMODE3 = OCT LEN FOLLOW SPEED INCH TRACK TYPE BPM, SEQMODE4 =
+  // SWING AMT EXT IN SRC GATE VEL ACC PROB, KEYMODE2/3/4 as their rows read.
+  // SPEED is seqSpeedName's nine names, SWING is SeqSwingStyle's nine, INCH is
+  // the firmware's INPUT CHANNEL, and KEYMODE4's genre list is genre_data.h.
+  const SPEEDS = ['1/64', '1/32', '1/16', '1/8', '1/4', '1/2', '1', '2', '4'];
+  const SWINGS = ['OFF', 'MPC60', 'MPC3K', 'SP1200', 'LINN', '808', '909', 'SHUF', 'TRIP'];
+  const KEY_GENRES = ['POP', 'ROCK', 'JAZZ', 'CLASSICAL', 'FOLK', 'COUNTRY',
+    'BLUES', 'RNB', 'FUNK', 'METAL', 'HIPHOP', 'ELECTRONIC', 'REGGAE',
+    'DUBTECHNO', 'GOSPEL', 'LATIN', 'CINEMATIC', 'MODAL'];
+  const MOODS = ['DARK', 'COOL', 'MIXED', 'WARM', 'LIGHT'];
+  const CADENCES = ['AUTH', 'PLAG', 'DECP', 'HALF'];
+  const TRACK_TYPES = ['DRUM', 'POLY', 'MONO'];
+  const blank = { label: '—', dash: true };
+  const octRow = { label: 'OCT', min: 0, max: 7, get: t => t.oct, set: (t, v) => { t.oct = v; } };
+  const scaleRow = { label: 'SCALE', min: 0, max: SCALES.length - 1, get: t => t.scale, set: (t, v) => { t.scale = v; }, fmt: v => SCALES[v] };
+  const keyRow = { label: 'KEY', min: 0, max: ROOTS.length - 1, get: t => t.root, set: (t, v) => { t.root = v; }, fmt: v => ROOTS[v] };
+  const pctRow = (label, k) => ({
+    label, min: 0, max: 100,
+    get: t => t.row[k], set: (t, v) => { t.row[k] = v; }, fmt: pctOf
+  });
+  const ROW_SPECS = {
+    seq3: [
+      octRow,
+      { label: 'LEN', min: 1, max: 64, get: t => t.row.len, set: (t, v) => { t.row.len = v; } },
+      { label: 'FOLLOW', min: 0, max: 1, get: t => t.row.follow, set: (t, v) => { t.row.follow = v; }, fmt: v => (v ? 'ON' : 'OFF') },
+      { label: 'SPEED', min: 0, max: SPEEDS.length - 1, get: t => t.row.speed, set: (t, v) => { t.row.speed = v; }, fmt: v => SPEEDS[v] },
+      { label: 'INCH', min: 0, max: 16, get: t => t.row.inch, set: (t, v) => { t.row.inch = v; }, fmt: v => (v ? 'CH ' + v : 'OFF') },
+      { label: 'TRACK', min: 1, max: 16, get: t => t.row.track, set: (t, v) => { t.row.track = v; }, fmt: v => 'CH ' + v },
+      { label: 'TYPE', min: 0, max: 2, ro: true, get: t => TRACK_TYPES.indexOf(t.type), fmt: v => TRACK_TYPES[v] },
+      { label: 'BPM', min: 20, max: 300, get: () => clock.bpm, set: (t, v) => { clock.bpm = v; } }
+    ],
+    seq4: [
+      { label: 'SWING', min: 0, max: SWINGS.length - 1, get: t => t.row.swing, set: (t, v) => { t.row.swing = v; }, fmt: v => SWINGS[v] },
+      { label: 'AMT', min: 0, max: 100, get: t => t.row.amt, set: (t, v) => { t.row.amt = v; }, fmt: pctOf },
+      // the firmware's own cells, kept with their labels even where the card
+      // has no state behind them yet
+      { label: 'EXT IN', dash: true },
+      { label: 'SRC', dash: true },
+      { label: 'GATE', min: 10, max: 100, get: t => t.gate, set: (t, v) => { t.gate = v; }, fmt: pctOf },
+      { label: 'VEL', min: 1, max: 127, get: t => t.vel, set: (t, v) => { t.vel = v; } },
+      { label: 'ACC', min: 1, max: 127, get: t => t.acc, set: (t, v) => { t.acc = v; } },
+      { label: 'PROB', min: 0, max: 100, get: t => t.prob, set: (t, v) => { t.prob = v; }, fmt: pctOf }
+    ],
+    key2: [octRow, scaleRow, keyRow,
+      { label: 'FSCALE', dash: true }, { label: 'BASS', dash: true },
+      { label: 'SPRD', dash: true }, { label: 'DENS', dash: true },
+      { label: 'LATCH', dash: true }],
+    key3: [octRow, scaleRow,
+      { label: 'ENCOD', dash: true }, { label: 'KBOARD', dash: true },
+      blank, blank, blank, blank],
+    key4: [
+      { label: 'GENRE', min: 0, max: KEY_GENRES.length - 1, get: t => t.row.genre, set: (t, v) => { t.row.genre = v; }, fmt: v => KEY_GENRES[v] },
+      { label: 'MOOD', min: 0, max: 100, get: t => t.row.mood, set: (t, v) => { t.row.mood = v; }, fmt: v => MOODS[clamp(Math.floor(v / 20), 0, 4)] },
+      pctRow('TENS', 'tens'),
+      pctRow('MOTION', 'motion'),
+      { label: 'CAD', min: 0, max: 3, get: t => t.row.cad, set: (t, v) => { t.row.cad = v; }, fmt: v => CADENCES[v] },
+      pctRow('CPX', 'cpx'),
+      { label: 'PHRASE', min: 0, max: 4, get: t => t.row.phrase, set: (t, v) => { t.row.phrase = v; } },
+      pctRow('SURP', 'surp')
+    ]
+  };
+
+  // the mode's own variant: SEQ 1/2 share the base row, KEY 1 is the keyboard
+  // screen, everything above 2 gets the variant row
+  function rowKey() {
+    if (mode === 'seq' && variant.seq >= 3) return 'seq' + variant.seq;
+    if (mode === 'key' && variant.key >= 2) return 'key' + variant.key;
+    return null;
+  }
+
+  function renderRow() {
+    const key = rowKey();
+    if (!key || !rowScreen) return;
+    const t = TRACKS[current];
+    const specs = ROW_SPECS[key];
+    rowCells.forEach((cell, i) => {
+      const sp = specs[i] || blank;
+      if (cell.b) cell.b.textContent = sp.label;
+      if (cell.s) cell.s.textContent = sp.dash ? '—'
+        : sp.fmt ? sp.fmt(sp.get(t)) : String(sp.get(t));
+    });
+    if (rowHead) {
+      rowHead.textContent = (mode === 'seq' ? 'SEQUENCER ' : 'KEYBOARD ') +
+        (mode === 'seq' ? variant.seq : variant.key);
+    }
+    if (rowNote) rowNote.textContent = 'CH ' + t.ch + ' ' + t.type;
+    rowModes.forEach((el, i) => el.classList.toggle('is-on', i === (mode === 'seq' ? 1 : 2)));
+  }
+
   const paramPos = (v, min, max) => clamp(Math.round(((v - min) / (max - min)) * 127), 0, 127);
 
   function knobPos(i) {
     const t = TRACKS[current];
     if (mode === 'enc') return encVals[i];
+    const rk = rowKey();
+    if (rk) {
+      const sp = (ROW_SPECS[rk] || [])[i];
+      if (!sp || sp.dash) return 0;
+      return paramPos(sp.get(t), sp.min, sp.max);
+    }
     if (mode === 'key') {
       const k = KEY_KNOBS[i];
       if (k === 'oct') return paramPos(t.oct, 0, 7);
@@ -389,6 +525,8 @@ if ('IntersectionObserver' in window) {
   // firmware's composite page check does
   if (pagePad) {
     pagePad.addEventListener('click', () => {
+      // SEQMODE3 is the pattern-setup screen and carries no page on the device
+      if (mode === 'seq' && variant.seq === 3) return;
       if (!pageOf(TRACKS[current])) return;      // this track carries no page
       pinned = true;
       pageOpen = !pageOpen;
@@ -421,6 +559,15 @@ if ('IntersectionObserver' in window) {
       return;
     }
     const t = TRACKS[current];
+    const rk = rowKey();
+    if (rk) {
+      const sp = (ROW_SPECS[rk] || [])[i];
+      if (!sp || sp.dash || sp.ro || !sp.set) return;
+      sp.set(t, clamp(sp.get(t) + steps, sp.min, sp.max));
+      updateScreen();
+      refreshKnobs();
+      return;
+    }
     if (mode === 'key') {
       const k = KEY_KNOBS[i];
       if (k === 'oct') t.oct = clamp(t.oct + steps, 0, 7);
@@ -556,7 +703,8 @@ if ('IntersectionObserver' in window) {
     if (scr.headLeft) {
       const shown = stepEdit && editTarget && targetAllowed(editTarget, t);
       scr.headLeft.textContent = page ? (PAGE_HEAD[page] || 'SEQUENCER')
-        : shown ? ATTR_NAME[editTarget] : 'SEQUENCER';
+        : shown ? ATTR_NAME[editTarget]
+        : variant.seq > 1 ? 'SEQUENCER ' + variant.seq : 'SEQUENCER';
     }
     if (scr.octave) scr.octave.textContent = String(t.oct);
     if (keyOct) keyOct.textContent = String(t.oct);
@@ -606,6 +754,7 @@ if ('IntersectionObserver' in window) {
       }
     });
     if (pageLegend) pageLegend.classList.toggle('is-on', page !== null);
+    renderRow();
     if (pagePad) {
       pagePad.classList.toggle('is-off', !pageOf(t));
       pagePad.setAttribute('aria-pressed', String(page !== null));
