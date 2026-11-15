@@ -429,6 +429,20 @@ ol,ul{margin:0;padding:0;list-style:none}
   background:var(--led-white);
   box-shadow:0 0 10px color-mix(in oklab,var(--led-white) 85%,transparent);
 }
+/* an armed edit-row target owns the pads: the note dims, the flag lights */
+.stepgrid__line[data-edit="1"] .stepgrid__cell[data-on="1"]::after{opacity:.4}
+.stepgrid__line[data-edit="1"] .stepgrid__cell[data-on="1"]{
+  border-color:color-mix(in oklab,var(--pad) 45%,transparent);
+  box-shadow:none;
+}
+.stepgrid__cell[data-attr="1"]{
+  border-color:#00fcfc;
+  box-shadow:0 0 18px color-mix(in oklab,#00fcfc 55%,transparent);
+}
+.stepgrid__cell[data-attr="1"]::after{
+  background:#00fcfc;
+  box-shadow:0 0 10px color-mix(in oklab,#00fcfc 75%,transparent);
+}
 .stepgrid__hint,.prog__hint{
   margin:18px 0 0;font-family:var(--font-mono);font-size:.6rem;
   letter-spacing:.2em;text-transform:uppercase;
@@ -531,11 +545,15 @@ ol,ul{margin:0;padding:0;list-style:none}
   grid-template-rows:repeat(3,1fr);gap:0 3.33cqw;padding-left:1.25cqw;
   align-items:center;
 }
-.scr-legend span{
+.scr-legend span,.scr-legend__key{
   height:5.42cqw;display:flex;align-items:center;justify-content:center;
   border-radius:1.25cqw;background:#181818;color:#888c88;
   font-size:2.9cqw;font-weight:600;letter-spacing:0;line-height:1;
 }
+.scr-legend__key{cursor:pointer;border:0;padding:0;font-family:inherit;width:100%}
+.scr-legend__key:hover{color:#fff}
+.scr-legend__key.is-off{opacity:.4;cursor:default}
+.scr-legend__key:focus-visible{outline:1px solid #00fcfc;outline-offset:1px}
 .scr-legend .is-on{background:#00fcfc;color:#000}
 .panel__encs{
   grid-column:10 / span 7;
@@ -624,6 +642,7 @@ ol,ul{margin:0;padding:0;list-style:none}
   background:color-mix(in oklab,var(--mode-seq) 16%,transparent);
   box-shadow:0 0 10px color-mix(in oklab,var(--mode-seq) 40%,transparent);
 }
+.panel__pad--arm.is-off{opacity:.42;cursor:default}
 .panel__pad--arm:focus-visible{outline:1px solid var(--mode-seq);outline-offset:1px}
 .panel__mode{
   cursor:pointer;font-family:inherit;

@@ -75,6 +75,7 @@ if ('IntersectionObserver' in window) {
   // the screen reads back whatever the card is doing, the way the panel does
   const scr = {
     head: document.querySelector('[data-scr="head"]'),
+    headLeft: document.querySelector('[data-scr="head-left"]'),
     octave: document.querySelector('[data-scr="octave"]'),
     listen: document.querySelector('[data-scr="listen"]'),
     overdub: document.querySelector('[data-scr="overdub"]'),
@@ -117,6 +118,7 @@ if ('IntersectionObserver' in window) {
   const panelKeys = [...document.querySelectorAll('#stepgrid .panel__key[data-note]')];
   const stepEditArm = document.getElementById('stepEditArm');
   const editLegend = document.querySelector('[data-scr="edit-legend"]');
+  const targetButtons = [...document.querySelectorAll('#stepgrid [data-target]')];
 
   const TRACKS = [
     { ch: 1, type: 'DRUM', scale: 0, root: 0, oct: 1, listen: 'CHORD', play: 'GATE', overdub: 'OFF',
@@ -140,6 +142,12 @@ if ('IntersectionObserver' in window) {
 
   const voicesOf = t => t.voices || [{ name: t.name, color: t.color, pattern: t.pattern }];
   const state = TRACKS.map(t => voicesOf(t).map(v => v.pattern.split('').map(c => c === 'x')));
+  // per-step attributes, the ones the M1 edit row's F keys select: a bitmask
+  // per step, so a step can carry TIE and ACCENT at once (Events.cpp stepAttrs)
+  const ATTR_BIT = [0, 1, 2, 4, 8];                    // 1 TIE, 2 GLIDE, 4 ACC, 8 PROB
+  const ATTR_NAME = [null, 'TIE', 'GLIDE', 'ACCENT', 'PROBABILITY'];
+  const attrs = TRACKS.map(t => voicesOf(t).map(() => new Uint8Array(16)));
+  let editTarget = 0;                                  // 0 = STEPS, 1..4 = F keys
   const tabs = [];
   const voiceTabs = [];
   let cells = [];
@@ -212,7 +220,7 @@ if ('IntersectionObserver' in window) {
   }
 
   modePads.forEach(b => {
-    b.addEventListener('click', () => { pinned = true; applyMode(b.dataset.mode); updateScreen(); });
+    b.addEventListener('click', () => { pinned = true; applyMode(b.dataset.mode); paint(); });
   });
 
   if (stepEditArm) {
@@ -220,8 +228,7 @@ if ('IntersectionObserver' in window) {
       stepEdit = !stepEdit;
       pinned = true;
       stepEditArm.setAttribute('aria-pressed', String(stepEdit));
-      updateScreen();
-      refreshKnobs();
+      paint();
     });
   }
 
@@ -286,6 +293,31 @@ if ('IntersectionObserver' in window) {
   function refreshKnobs() {
     encKnobs.forEach((k, i) => k.style.setProperty('--v', knobPos(i)));
   }
+
+  // the F keys pick the edit-row target; only a MONO track can edit TIE and
+  // GLIDE (Events.cpp stepEditActive: MONO 1..4, POLY and DRUM 3..4)
+  const targetAllowed = (n, t) => n >= 3 || t.type === 'MONO';
+
+  function markTargets(t) {
+    const track = t || TRACKS[current];
+    targetButtons.forEach(b => {
+      const n = Number(b.dataset.target);
+      const on = n === editTarget;
+      const ok = targetAllowed(n, track);
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', String(on));
+      b.classList.toggle('is-off', !ok);
+    });
+  }
+
+  targetButtons.forEach(b => {
+    b.addEventListener('click', () => {
+      const n = Number(b.dataset.target);
+      pinned = true;
+      editTarget = editTarget === n ? 0 : n;
+      paint();
+    });
+  });
 
   // One detent of a knob, in that page's own units: CC counts on the encoder
   // page, one step of the cell under it on the other two — an octave, a scale,
@@ -381,7 +413,13 @@ if ('IntersectionObserver' in window) {
       b.setAttribute('aria-label', v.name + ' step ' + (c + 1));
       b.addEventListener('click', () => {
         pinned = true;
-        state[current][voice][c] = !state[current][voice][c];
+        // with an attribute armed the pads edit that flag instead of the note
+        if (mode === 'seq' && stepEdit && editTarget &&
+            targetAllowed(editTarget, TRACKS[current])) {
+          attrs[current][voice][c] ^= ATTR_BIT[editTarget];
+        } else {
+          state[current][voice][c] = !state[current][voice][c];
+        }
         paint();
       });
       host.appendChild(b);
@@ -413,6 +451,11 @@ if ('IntersectionObserver' in window) {
     const t = TRACKS[current];
     const v = voicesOf(t)[voice];
     if (scr.head) scr.head.textContent = 'CH ' + t.ch + ' ' + t.type + ' · ' + v.name;
+    // an armed attribute target takes the header's left slot, as on the panel
+    if (scr.headLeft) {
+      const shown = stepEdit && editTarget && targetAllowed(editTarget, t);
+      scr.headLeft.textContent = shown ? ATTR_NAME[editTarget] : 'SEQUENCER';
+    }
     if (scr.octave) scr.octave.textContent = String(t.oct);
     if (keyOct) keyOct.textContent = String(t.oct);
     if (keyScale) {
@@ -455,11 +498,22 @@ if ('IntersectionObserver' in window) {
   function paint() {
     const t = TRACKS[current];
     const v = voicesOf(t)[voice];
+    const editing = mode === 'seq' && stepEdit && editTarget !== 0 &&
+      targetAllowed(editTarget, t);
+    const bit = editing ? ATTR_BIT[editTarget] : 0;
+    host.dataset.edit = editing ? '1' : '0';
     cells.forEach((b, c) => {
       b.dataset.on = state[current][voice][c] ? '1' : '0';
       b.setAttribute('aria-pressed', String(state[current][voice][c]));
       b.classList.toggle('is-hit', state[current][voice][c] && c === step);
+      const has = bit !== 0 && (attrs[current][voice][c] & bit) !== 0;
+      b.dataset.attr = has ? '1' : '0';
+      if (editing) {
+        b.setAttribute('aria-label', v.name + ' step ' + (c + 1) + ' ' +
+          ATTR_NAME[editTarget] + (has ? ' on' : ' off'));
+      }
     });
+    markTargets(t);
     counter.textContent = String(step + 1).padStart(2, '0') + ' / 16';
     const label = 'CH ' + t.ch + ' · ' + t.type + ' · ' + v.name +
       (t.follow ? ' ← ' + t.follow : '');

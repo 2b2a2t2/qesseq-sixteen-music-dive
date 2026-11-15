@@ -160,7 +160,7 @@
                 <div class="panel__top">
                   <div class="panel__screen" role="group" aria-label="The 480 by 320 display, showing the page of the selected mode">
                     <div class="scr scr--seq">
-                      <div class="scr-head">SEQUENCER<em class="scr-note" data-scr="head">CH 1 DRUM</em></div>
+                      <div class="scr-head"><span data-scr="head-left">SEQUENCER</span><em class="scr-note" data-scr="head">CH 1 DRUM</em></div>
                       <div class="scr-modes">
                         <span>ENCODER</span>
                         <span class="is-on">SEQUENCER</span>
@@ -182,10 +182,10 @@
                         <span data-scr="edit-legend" style="grid-area:2 / 1">EDIT</span>
                         <span style="grid-area:2 / 2">GENERATE</span>
                         <span style="grid-area:2 / 3">GENERATE</span>
-                        <span style="grid-area:3 / 1">TIE</span>
-                        <span style="grid-area:3 / 2">GLIDE</span>
-                        <span style="grid-area:3 / 3">ACCENT</span>
-                        <span style="grid-area:3 / 4">PROBABILITY</span>
+                        <button class="scr-legend__key" type="button" data-target="1" aria-pressed="false" style="grid-area:3 / 1" aria-label="TIE, edit the steps' ties">TIE</button>
+                        <button class="scr-legend__key" type="button" data-target="2" aria-pressed="false" style="grid-area:3 / 2" aria-label="GLIDE, edit the steps' glides">GLIDE</button>
+                        <button class="scr-legend__key" type="button" data-target="3" aria-pressed="false" style="grid-area:3 / 3" aria-label="ACCENT, edit the steps' accents">ACCENT</button>
+                        <button class="scr-legend__key" type="button" data-target="4" aria-pressed="false" style="grid-area:3 / 4" aria-label="PROBABILITY, edit the steps' probability">PROBABILITY</button>
                       </div>
                     </div>
                     <div class="scr scr--enc" hidden>
@@ -276,10 +276,10 @@
                   <button type="button" class="panel__pad panel__pad--arm" id="stepEditArm" aria-pressed="false" style="grid-column:3" aria-label="M1, arm the record knobs">M1</button>
                   <span class="panel__pad" style="grid-column:4">M2</span>
                   <span class="panel__pad" style="grid-column:5">M3</span>
-                  <span class="panel__pad" style="grid-column:6">F1</span>
-                  <span class="panel__pad" style="grid-column:7">F2</span>
-                  <span class="panel__pad" style="grid-column:8">F3</span>
-                  <span class="panel__pad" style="grid-column:9">F4</span>
+                  <button type="button" class="panel__pad panel__pad--arm" data-target="1" aria-pressed="false" style="grid-column:6" aria-label="F1, the TIE edit target">F1</button>
+                  <button type="button" class="panel__pad panel__pad--arm" data-target="2" aria-pressed="false" style="grid-column:7" aria-label="F2, the GLIDE edit target">F2</button>
+                  <button type="button" class="panel__pad panel__pad--arm" data-target="3" aria-pressed="false" style="grid-column:8" aria-label="F3, the ACCENT edit target">F3</button>
+                  <button type="button" class="panel__pad panel__pad--arm" data-target="4" aria-pressed="false" style="grid-column:9" aria-label="F4, the PROBABILITY edit target">F4</button>
                   <span class="panel__key" data-note="0" style="grid-column:10">C</span>
                   <span class="panel__key" data-note="2" style="grid-column:11">D</span>
                   <span class="panel__key" data-note="4" style="grid-column:12">E</span>
@@ -296,7 +296,7 @@
               <span>SPEED <b>1/16</b></span>
               <span>TRACKS <b>16</b></span>
             </div>
-            <p class="stepgrid__hint">▸ tap a pad to toggle it · M1 arms the record knobs · CH 1 is the kit, one line per voice<span class="only-narrow"> · swipe →</span></p>
+            <p class="stepgrid__hint">▸ tap a pad to toggle it · M1 arms the edit row · F1–F4 pick TIE, GLIDE, ACCENT or PROBABILITY · CH 1 is the kit, one line per voice<span class="only-narrow"> · swipe →</span></p>
           </div>
         </div>
       </article>
