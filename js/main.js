@@ -119,10 +119,16 @@ if ('IntersectionObserver' in window) {
   const stepEditArm = document.getElementById('stepEditArm');
   const editLegend = document.querySelector('[data-scr="edit-legend"]');
   const targetButtons = [...document.querySelectorAll('#stepgrid [data-target]')];
+  const pagePad = document.getElementById('pagePad');
+  const pageLegend = document.querySelector('[data-scr="page-legend"]');
+  const seqCells = [...document.querySelectorAll('.scr--seq .scr-grid .scr-cell')]
+    .map(cell => ({ b: cell.querySelector('b'), s: cell.querySelector('span') }));
+  const baseLabels = seqCells.map(c => (c.b ? c.b.textContent : ''));
 
   const TRACKS = [
     { ch: 1, type: 'DRUM', scale: 0, root: 0, oct: 1, listen: 'CHORD', play: 'GATE', overdub: 'OFF',
       gate: 100, vel: 90, acc: 101, prob: 100,
+      page: { genre: 0, var: 0, fill: 60, mot: 20, lines: [0, 0, 0, 0] },
       color: 'var(--led-red)', voices: [
       { name: 'KICK',  color: 'var(--led-red)',    pattern: 'x...x...x...x..x' },
       { name: 'SNARE', color: 'var(--led-white)',  pattern: '....x.......x...' },
@@ -131,12 +137,15 @@ if ('IntersectionObserver' in window) {
     ] },
     { ch: 2, type: 'POLY', name: 'CHORDS', scale: 1, root: 0, oct: 4, listen: 'CHORD', play: 'GATE', overdub: 'OFF',
       gate: 100, vel: 90, acc: 101, prob: 100,
+      page: { hits: 0 },
       color: 'var(--led-blue)',  pattern: 'x.......x...x...' },
     { ch: 3, type: 'POLY', name: 'SKANK',  scale: 5, root: 2, oct: 4, listen: 'CHORD', play: 'GATE', overdub: 'OFF',
       gate: 100, vel: 90, acc: 101, prob: 100,
+      page: { tes: 0, mot: 50, shp: 0, thn: 0, ext: 0, sub: 0, tesr: 0, notr: 0 },
       color: 'var(--led-green)', follow: 'CH 2', pattern: '..x.x..x..x.x..x' },
     { ch: 4, type: 'MONO', name: 'BASS',   scale: 2, root: 9, oct: 2, listen: 'CHORD', play: 'GATE', overdub: 'OFF',
       gate: 100, vel: 90, acc: 101, prob: 100,
+      page: { fill: 50, acc: 30, glide: 20, tie: 10 },
       color: 'var(--led-teal)',  pattern: 'x..x..x...x.x...' }
   ];
 
@@ -148,6 +157,7 @@ if ('IntersectionObserver' in window) {
   const ATTR_NAME = [null, 'TIE', 'GLIDE', 'ACCENT', 'PROBABILITY'];
   const attrs = TRACKS.map(t => voicesOf(t).map(() => new Uint8Array(16)));
   let editTarget = 0;                                  // 0 = STEPS, 1..4 = F keys
+  let pageOpen = false;                                // the M2 page of this track
   const tabs = [];
   const voiceTabs = [];
   let cells = [];
@@ -202,6 +212,7 @@ if ('IntersectionObserver' in window) {
 
   function applyMode(m) {
     mode = m;
+    pageOpen = false;      // the page only lives on the sequencer screen
     if (gridCard) gridCard.dataset.mode = m;
     // the display shows the page that belongs to the mode: dials in ENC,
     // the keyboard page in KEY, the sequencer page otherwise
@@ -261,6 +272,64 @@ if ('IntersectionObserver' in window) {
   ];
   const KEY_KNOBS = ['oct', 'scale', 'root'];
 
+  // M2 opens the page the edit track carries: the firmware binds a page to the
+  // track's TYPE, and while it is up the same eight knobs take that page's
+  // parameters (Events.h genPage/compPage/skankPage/drumPage).  The rows and
+  // ranges are the firmware's own: Gen.cpp's 50/30/20/10 defaults, Drum.cpp's
+  // 18 genres, three var depths, three line states and 60/20 fill/mot, the
+  // Skank.h knob order, and COMP's HITS 0..8.
+  const DRUM_GENRES = ['HOUSE', 'TECHNO', 'BREAKS', 'HIPHOP', 'TRAP', 'JUNGLE',
+    'FUNK', 'ROCK', 'JAZZ', 'LATIN', 'AFRO', 'ELECTRO', 'DNB', 'GARAGE', 'PUNK',
+    'SKA', 'DISCO', 'REGGAE'];
+  const DRUM_VARS = ['off', 'fill4', 'fill8'];
+  const DRUM_LINES = ['A', 'B', 'OFF'];
+  const pctOf = v => v + '%';
+  const PAGE_ROWS = {
+    gen: [
+      { label: 'OCT', min: 0, max: 7, get: t => t.oct, set: (t, v) => { t.oct = v; } },
+      { label: 'FILL%', min: 0, max: 100, get: t => t.page.fill, set: (t, v) => { t.page.fill = v; }, fmt: pctOf },
+      { label: 'ACC%', min: 0, max: 100, get: t => t.page.acc, set: (t, v) => { t.page.acc = v; }, fmt: pctOf },
+      { label: 'GLIDE%', min: 0, max: 100, get: t => t.page.glide, set: (t, v) => { t.page.glide = v; }, fmt: pctOf },
+      { label: 'GATE', min: 10, max: 100, get: t => t.gate, set: (t, v) => { t.gate = v; }, fmt: pctOf },
+      { label: 'VEL', min: 1, max: 127, get: t => t.vel, set: (t, v) => { t.vel = v; } },
+      { label: 'TIE%', min: 0, max: 100, get: t => t.page.tie, set: (t, v) => { t.page.tie = v; }, fmt: pctOf },
+      { label: 'PROB', min: 0, max: 100, get: t => t.prob, set: (t, v) => { t.prob = v; }, fmt: pctOf }
+    ],
+    comp: [
+      { label: 'HITS', min: 0, max: 8, get: t => t.page.hits, set: (t, v) => { t.page.hits = v; } },
+      { label: '—', idle: true }, { label: '—', idle: true }, { label: '—', idle: true },
+      { label: '—', idle: true }, { label: '—', idle: true }, { label: '—', idle: true },
+      { label: '—', idle: true }
+    ],
+    skank: [
+      { label: 'TES', min: 0, max: 100, get: t => t.page.tes, set: (t, v) => { t.page.tes = v; }, fmt: pctOf },
+      { label: 'MOT', min: 0, max: 100, get: t => t.page.mot, set: (t, v) => { t.page.mot = v; }, fmt: pctOf },
+      { label: 'SHP', min: 0, max: 100, get: t => t.page.shp, set: (t, v) => { t.page.shp = v; }, fmt: pctOf },
+      { label: 'THN', min: 0, max: 100, get: t => t.page.thn, set: (t, v) => { t.page.thn = v; }, fmt: pctOf },
+      { label: 'EXT', min: 0, max: 100, get: t => t.page.ext, set: (t, v) => { t.page.ext = v; }, fmt: pctOf },
+      { label: 'SUB', min: 0, max: 100, get: t => t.page.sub, set: (t, v) => { t.page.sub = v; }, fmt: pctOf },
+      { label: 'TES%', min: 0, max: 100, get: t => t.page.tesr, set: (t, v) => { t.page.tesr = v; }, fmt: pctOf },
+      { label: 'NOT%', min: 0, max: 100, get: t => t.page.notr, set: (t, v) => { t.page.notr = v; }, fmt: pctOf }
+    ],
+    drum: [
+      { label: 'GENRE', min: 0, max: DRUM_GENRES.length - 1, get: t => t.page.genre, set: (t, v) => { t.page.genre = v; }, fmt: v => DRUM_GENRES[v] },
+      { label: 'VAR', min: 0, max: 2, get: t => t.page.var, set: (t, v) => { t.page.var = v; }, fmt: v => DRUM_VARS[v] },
+      { label: 'FILL%', min: 0, max: 100, get: t => t.page.fill, set: (t, v) => { t.page.fill = v; }, fmt: pctOf },
+      { label: 'MOT%', min: 0, max: 100, get: t => t.page.mot, set: (t, v) => { t.page.mot = v; }, fmt: pctOf },
+      ...['KICK', 'SNARE', 'HAT', 'PERC'].map((label, l) => ({
+        label, min: 0, max: 2,
+        get: t => t.page.lines[l],
+        set: (t, v) => { t.page.lines[l] = v; },
+        fmt: v => DRUM_LINES[v]
+      }))
+    ]
+  };
+  const PAGE_HEAD = { drum: 'DRUM PATTERN', gen: 'GENERATOR' };
+  const pageOf = t => t.type === 'DRUM' ? 'drum'
+    : t.type === 'MONO' ? 'gen'
+    : t.name === 'SKANK' ? 'skank'
+    : t.name === 'CHORDS' ? 'comp' : null;
+
   const paramPos = (v, min, max) => clamp(Math.round(((v - min) / (max - min)) * 127), 0, 127);
 
   function knobPos(i) {
@@ -272,6 +341,11 @@ if ('IntersectionObserver' in window) {
       if (k === 'scale') return paramPos(t.scale, 0, SCALES.length - 1);
       if (k === 'root') return paramPos(t.root, 0, ROOTS.length - 1);
       return 0;
+    }
+    if (pageOpen) {
+      const row = (PAGE_ROWS[pageOf(t)] || [])[i];
+      if (!row || row.idle) return 0;
+      return paramPos(row.get(t), row.min, row.max);
     }
     const spec = SEQ_KNOBS[i];
     if (!spec || (spec.only && !spec.only(t))) return 0;
@@ -310,6 +384,22 @@ if ('IntersectionObserver' in window) {
     });
   }
 
+  // M2: the page of the track in front of you.  It and the edit row are
+  // mutually exclusive, and a channel or mode switch drops it, as the
+  // firmware's composite page check does
+  if (pagePad) {
+    pagePad.addEventListener('click', () => {
+      if (!pageOf(TRACKS[current])) return;      // this track carries no page
+      pinned = true;
+      pageOpen = !pageOpen;
+      if (pageOpen && stepEdit) {
+        stepEdit = false;
+        stepEditArm.setAttribute('aria-pressed', 'false');
+      }
+      paint();
+    });
+  }
+
   targetButtons.forEach(b => {
     b.addEventListener('click', () => {
       const n = Number(b.dataset.target);
@@ -338,6 +428,15 @@ if ('IntersectionObserver' in window) {
       else if (k === 'root') t.root = (t.root + steps + ROOTS.length) % ROOTS.length;
       else return;
     } else {
+      if (pageOpen) {
+        // the open page owns the row: TIE% moves in 1s, HITS in whole stabs
+        const row = (PAGE_ROWS[pageOf(t)] || [])[i];
+        if (!row || row.idle) return;
+        row.set(t, clamp(row.get(t) + steps, row.min, row.max));
+        updateScreen();
+        refreshKnobs();
+        return;
+      }
       const spec = SEQ_KNOBS[i];
       if (!spec || (spec.only && !spec.only(t))) return;
       if (spec.options) {
@@ -437,6 +536,7 @@ if ('IntersectionObserver' in window) {
   function selectTrack(i, v) {
     current = i;
     voice = v || 0;
+    pageOpen = false;      // the page belongs to the track, so it dies with it
     renderVoices();
     buildLine();
     tabs.forEach((b, n) => {
@@ -452,9 +552,11 @@ if ('IntersectionObserver' in window) {
     const v = voicesOf(t)[voice];
     if (scr.head) scr.head.textContent = 'CH ' + t.ch + ' ' + t.type + ' · ' + v.name;
     // an armed attribute target takes the header's left slot, as on the panel
+    const page = pageOpen ? pageOf(t) : null;
     if (scr.headLeft) {
       const shown = stepEdit && editTarget && targetAllowed(editTarget, t);
-      scr.headLeft.textContent = shown ? ATTR_NAME[editTarget] : 'SEQUENCER';
+      scr.headLeft.textContent = page ? (PAGE_HEAD[page] || 'SEQUENCER')
+        : shown ? ATTR_NAME[editTarget] : 'SEQUENCER';
     }
     if (scr.octave) scr.octave.textContent = String(t.oct);
     if (keyOct) keyOct.textContent = String(t.oct);
@@ -489,10 +591,25 @@ if ('IntersectionObserver' in window) {
     // only a MONO track carries GATE and VELOCITY on the base row: on the
     // others they are the M1 edit row's knobs, so the cells say so
     const fromMenu = t.type !== 'MONO';
-    if (scr.gateTag) scr.gateTag.hidden = !fromMenu;
-    if (scr.velTag) scr.velTag.hidden = !fromMenu;
+    if (scr.gateTag) scr.gateTag.hidden = page !== null || !fromMenu;
+    if (scr.velTag) scr.velTag.hidden = page !== null || !fromMenu;
     if (scr.accent) scr.accent.textContent = stepEdit ? String(t.acc) : '—';
     if (scr.probability) scr.probability.textContent = stepEdit ? t.prob + '%' : '—';
+    // an open page owns the row: its labels and values replace the base ones
+    const rows = page ? PAGE_ROWS[page] : null;
+    seqCells.forEach((cell, i) => {
+      const row = rows ? rows[i] : null;
+      if (cell.b) cell.b.textContent = row ? row.label : baseLabels[i];
+      if (row && !row.idle && cell.s) {
+        const val = row.get(t);
+        cell.s.textContent = row.fmt ? row.fmt(val) : String(val);
+      }
+    });
+    if (pageLegend) pageLegend.classList.toggle('is-on', page !== null);
+    if (pagePad) {
+      pagePad.classList.toggle('is-off', !pageOf(t));
+      pagePad.setAttribute('aria-pressed', String(page !== null));
+    }
   }
 
   function paint() {
