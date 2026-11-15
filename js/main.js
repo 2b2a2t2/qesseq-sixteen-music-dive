@@ -289,8 +289,8 @@ if ('IntersectionObserver' in window) {
       const spec = SEQ_KNOBS[i];
       if (!spec || (spec.only && !spec.only(t))) return;
       if (spec.options) {
-        const n = spec.options.length;
-        t[spec.key] = spec.options[(spec.options.indexOf(t[spec.key]) + steps + n) % n];
+        // the firmware clamps these states, it does not wrap them
+        t[spec.key] = spec.options[clamp(spec.options.indexOf(t[spec.key]) + steps, 0, spec.options.length - 1)];
       } else {
         const stp = spec.step || 1;
         t[spec.key] = clamp(t[spec.key] + steps * stp, spec.min, spec.max);
