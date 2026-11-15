@@ -237,15 +237,16 @@ if ('IntersectionObserver' in window) {
   // and a DRUM track has no record options, so LISTEN / PLAY / OVERDUB are
   // blank there and their three knobs stay dead.
   const recOnly = t => stepEdit && t.type !== 'DRUM';
+  const armOnly = () => stepEdit;              // the M1 step-edit radio
   const SEQ_KNOBS = [
     { key: 'oct',     min: 0, max: 7 },                                // OCT
     { key: 'listen',  options: ['CHORD', 'NOTE'], only: recOnly },     // LISTEN
     { key: 'play',    options: ['GATE', 'RECORDED'], only: recOnly },  // PLAY
     { key: 'overdub', options: ['OFF', 'ON'], only: recOnly },         // OVERDUB
-    { key: 'gate',    min: 10, max: 100 },                             // GATE
-    { key: 'vel',     min: 1, max: 127 },                              // VEL
-    { key: 'acc',     min: 1, max: 127 },                              // ACC
-    { key: 'prob',    min: 0, max: 100 }                               // PROB
+    { key: 'gate',    min: 10, max: 100, only: armOnly },              // GATE
+    { key: 'vel',     min: 1, max: 127, only: armOnly },               // VEL
+    { key: 'acc',     min: 1, max: 127, only: armOnly },               // ACC
+    { key: 'prob',    min: 0, max: 100, only: armOnly }                // PROB
   ];
   const KEY_KNOBS = ['oct', 'scale', 'root'];
 
@@ -436,10 +437,10 @@ if ('IntersectionObserver' in window) {
     if (scr.play) scr.play.textContent = idle ? '—' : t.play;
     if (scr.overdub) scr.overdub.textContent = idle ? '—' : t.overdub;
     if (editLegend) editLegend.classList.toggle('is-on', stepEdit);
-    if (scr.gate) scr.gate.textContent = t.gate + '%';
-    if (scr.velocity) scr.velocity.textContent = String(t.vel);
-    if (scr.accent) scr.accent.textContent = String(t.acc);
-    if (scr.probability) scr.probability.textContent = t.prob + '%';
+    if (scr.gate) scr.gate.textContent = stepEdit ? t.gate + '%' : '—';
+    if (scr.velocity) scr.velocity.textContent = stepEdit ? String(t.vel) : '—';
+    if (scr.accent) scr.accent.textContent = stepEdit ? String(t.acc) : '—';
+    if (scr.probability) scr.probability.textContent = stepEdit ? t.prob + '%' : '—';
   }
 
   function paint() {
