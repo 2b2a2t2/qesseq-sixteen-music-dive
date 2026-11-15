@@ -80,6 +80,8 @@ if ('IntersectionObserver' in window) {
     overdub: document.querySelector('[data-scr="overdub"]'),
     play: document.querySelector('[data-scr="play"]'),
     gate: document.querySelector('[data-scr="gate"]'),
+    gateTag: document.querySelector('[data-scr="gate-tag"]'),
+    velTag: document.querySelector('[data-scr="vel-tag"]'),
     accent: document.querySelector('[data-scr="accent"]'),
     velocity: document.querySelector('[data-scr="velocity"]'),
     probability: document.querySelector('[data-scr="probability"]')
@@ -441,6 +443,11 @@ if ('IntersectionObserver' in window) {
     if (editLegend) editLegend.classList.toggle('is-on', stepEdit);
     if (scr.gate) scr.gate.textContent = stepEdit ? t.gate + '%' : '—';
     if (scr.velocity) scr.velocity.textContent = stepEdit ? String(t.vel) : '—';
+    // only a MONO track carries GATE and VELOCITY on the base row: on the
+    // others they are the M1 edit row's knobs, so the cells say so
+    const fromMenu = t.type !== 'MONO';
+    if (scr.gateTag) scr.gateTag.hidden = !fromMenu;
+    if (scr.velTag) scr.velTag.hidden = !fromMenu;
     if (scr.accent) scr.accent.textContent = stepEdit ? String(t.acc) : '—';
     if (scr.probability) scr.probability.textContent = stepEdit ? t.prob + '%' : '—';
   }

@@ -509,8 +509,15 @@ ol,ul{margin:0;padding:0;list-style:none}
 .scr-modes .is-on{background:#00fcfc;color:#000}
 .scr-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:1fr 1fr}
 .scr-cell{
+  position:relative;
   display:flex;flex-direction:column;gap:1.25cqw;padding:2.08cqw 1.25cqw 0;
   border-left:0.21cqw solid #282828;border-top:0.21cqw solid #282828;
+}
+/* which knobs belong to the M1 edit row instead of the base row */
+.scr-cell__k{
+  position:absolute;top:1.5cqw;right:1.5cqw;
+  font-family:var(--font-mono);font-style:normal;font-size:2.1cqw;
+  letter-spacing:.1em;color:#00fcfc;opacity:.72;
 }
 .scr-cell:nth-child(1),.scr-cell:nth-child(5){border-left:0}
 .scr-cell:nth-child(-n+4){border-top:0}
