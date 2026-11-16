@@ -123,6 +123,35 @@ if ('IntersectionObserver' in window) {
     0xDDD, 0x9E7, 0x8E3, 0xD75, 0xBEF, 0x57B, 0x5DB, 0x463, 0x28D, 0x18B,
     0x18D, 0x6AD, 0x6AB, 0x5B3
   ];
+  // ---- pitch ----------------------------------------------------------
+  // The 12-bit mask says which semitones of the octave the scale holds, so the
+  // scale's own tones are its set bits and degree d is the d-th of them.  A
+  // chord is that scale's thirds stacked, which means the quality comes out of
+  // the mode instead of being asserted, and the track's root and octave turn a
+  // degree into a MIDI number (C4 = 60).
+  const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  function scaleTones(t) {
+    const mask = SCALE_MASK[t.scale] === undefined ? 0xFFF : SCALE_MASK[t.scale];
+    const tones = [];
+    for (let i = 0; i < 12; i++) if ((mask >> i) & 1) tones.push(i);
+    return tones;
+  }
+  function degreeSemis(t, d) {
+    const tones = scaleTones(t);
+    const n = tones.length || 1;
+    return tones[((d % n) + n) % n] + 12 * Math.floor(d / n);
+  }
+  const noteMidi = (t, d) => (t.oct + 1) * 12 + t.root + degreeSemis(t, d);
+  const noteName = m => NOTE_NAMES[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+  // root, third, fifth — and the seventh and ninth once TENSION asks for them
+  function voicingMidi(t, d) {
+    const ext = t.row && t.row.tens >= 80 ? [0, 2, 4, 6, 8]
+      : t.row && t.row.tens >= 60 ? [0, 2, 4, 6]
+        : [0, 2, 4];
+    return ext.map(o => noteMidi(t, d + o));
+  }
+  const voicingNames = (t, d) => voicingMidi(t, d).map(noteName);
+
   const panelKeys = [...document.querySelectorAll('#stepgrid .panel__key[data-note]')];
   const stepEditArm = document.getElementById('stepEditArm');
   const editLegend = document.querySelector('[data-scr="edit-legend"]');
@@ -508,6 +537,8 @@ if ('IntersectionObserver' in window) {
   const CADENCE_LANDING = [0, 0, 5, 4];       // V-I, IV-I, V-vi, ii-V
   const MINOR_DEGREES = [1, 2, 5];
   const chordsOf = TRACKS.map(() => new Int8Array(STEPS_MAX).fill(-1));
+  // what a following track is holding while its feeder rests
+  const heldOf = TRACKS.map(() => null);
   let chordRoll = 20260101;
 
   // imul keeps the roll inside 32 bits: plain multiplication overflowed the
@@ -525,6 +556,13 @@ if ('IntersectionObserver' in window) {
     // tension only colours the chord once it is past the neutral midpoint
     const ext = p.tens >= 80 ? '9' : p.tens >= 60 ? '7' : '';
     return DEGREES[d] + ext;
+  }
+
+  // the notes a step's chord is voiced on, in that track's key and octave
+  function chordNotes(trackIdx, s) {
+    const d = chordsOf[trackIdx][s];
+    if (d === undefined || d < 0) return [];
+    return voicingNames(TRACKS[trackIdx], d);
   }
 
   function generateProgression(reseed) {
@@ -934,8 +972,11 @@ if ('IntersectionObserver' in window) {
       const has = bit !== 0 && (attrs[current][voice][n] & bit) !== 0;
       b.dataset.attr = has ? '1' : '0';
       const chord = current === 1 ? chordName(1, n) : '';
+      const notes = current === 1 ? chordNotes(1, n) : [];
+      b.title = notes.length ? notes.join(' ') : '';
       b.setAttribute('aria-label', v.name + ' step ' + (n + 1) +
         (chord ? ' · ' + chord : '') +
+        (notes.length ? ' (' + notes.join(' ') + ')' : '') +
         (editing ? ' ' + ATTR_NAME[editTarget] + (has ? ' on' : ' off')
           : on ? ' on' : ' off'));
     });
@@ -945,8 +986,18 @@ if ('IntersectionObserver' in window) {
     if (speedOut) speedOut.textContent = SPEEDS[clamp(t.row.speed, 0, SPEEDS.length - 1)];
     const label = 'CH ' + t.ch + ' · ' + t.type + ' · ' + v.name +
       (t.follow ? ' ← ' + t.follow : '');
-    trackLabel.textContent = label + (current === 1 ? chordLine() : '') +
-      (holding ? ' · FREEZE' : '');
+    // the pitches, not just the degree: CH 2 names the chord it is sounding,
+    // and a frozen follower names the chord it is holding
+    let extra = current === 1 ? chordLine() : '';
+    if (current === 1) {
+      const sound = chordNotes(1, pos);
+      if (sound.length) extra += ' · ' + sound.join(' ');
+    }
+    if (holding) {
+      const held = heldOf[current];
+      extra += ' · FREEZE' + (held && held.notes.length ? ' ' + held.notes.join(' ') : '');
+    }
+    trackLabel.textContent = label + extra;
     updateScreen();
     refreshKnobs();
   }
@@ -1035,7 +1086,12 @@ if ('IntersectionObserver' in window) {
       TRACKS.forEach((t, i) => {
         const f = followOn(t) ? feederOf(t) : null;
         if (!f) { posOf[i] = step % lenOf(t); return; }
-        if (soundsAt(TRACKS.indexOf(f), step)) posOf[i] = (posOf[i] + 1) % lenOf(t);
+        const fi = TRACKS.indexOf(f);
+        if (soundsAt(fi, step)) {
+          posOf[i] = (posOf[i] + 1) % lenOf(t);
+          // latching the chord itself, so the freeze holds pitches
+          heldOf[i] = { degree: chordsOf[fi][step], notes: chordNotes(fi, step) };
+        }
       });
       // the line follows the track, the way the panel does
       if (step === 0 && !pinned) nextTrack();
@@ -1184,16 +1240,55 @@ if ('IntersectionObserver' in window) {
   const items = Array.from(list.querySelectorAll('button'));
   let g = 2, accepted = -1;
 
+  // The panel keeps one key (C) and takes the mode from the genre's own tonic
+  // case, so a degree becomes pitches the same way the card's engine does it.
+  // A flat degree is a semitone down in a major key; the minor modes already
+  // hold the flats the table spells (bIII, bVI, bVII).
+  const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const MAJOR = [0, 2, 4, 5, 7, 9, 11];
+  const MINOR = [0, 2, 3, 5, 7, 8, 10];
+  const ROMAN = { I: 0, II: 1, III: 2, IV: 3, V: 4, VI: 5, VII: 6 };
+  // a minor key and a flat degree are spelled with flats, a major key with sharps
+  const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+  const pcName = (m, flats) =>
+    (flats ? FLAT_NAMES : NOTE_NAMES)[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+
+  // one chord symbol → its notes: the degree and its thirds, a semitone lower
+  // for a flat degree in a major key (a minor key already holds bIII/bVI/bVII)
+  function chordVoicing(sym, tones, isMajor) {
+    const m = /^(b?)([ivIV]+)(7?)$/.exec(sym) || ['', '', 'I', ''];
+    const flats = !isMajor || m[1] === 'b';
+    const flat = m[1] === 'b' && isMajor;
+    const d = ROMAN[m[2].toUpperCase()] === undefined ? 0 : ROMAN[m[2].toUpperCase()];
+    const ext = m[3] === '7' ? [0, 2, 4, 6] : [0, 2, 4];
+    return ext.map(o => {
+      const n = tones.length;
+      const i = ((d + o) % n + n) % n;
+      const semi = tones[i] + 12 * Math.floor((d + o) / n) - (flat ? 1 : 0);
+      return pcName(60 + semi, flats);
+    });
+  }
+
   function paint() {
     const genre = GENRES[g];
+    // a tonic in lower case means the genre is minor, so its table's b-degrees
+    // are already the flat ones the scale holds
+    const isMajor = !/^i7?$/.test(genre.chords[0]);
+    const tones = isMajor ? MAJOR : MINOR;
     items.forEach((btn, i) => {
-      btn.textContent = genre.chords[i];
-      btn.setAttribute('aria-label', 'Accept chord ' + genre.chords[i]);
+      const sym = genre.chords[i];
+      const notes = chordVoicing(sym, tones, isMajor);
+      btn.innerHTML = '<b></b><small></small>';
+      btn.querySelector('b').textContent = sym;
+      btn.querySelector('small').textContent = notes.join(' ');
+      btn.setAttribute('aria-label', 'Accept chord ' + sym + ', ' + notes.join(' '));
       btn.classList.toggle('is-on', i === accepted);
       btn.setAttribute('aria-pressed', String(i === accepted));
     });
     document.getElementById('progGenre').textContent = genre.name;
     document.getElementById('progCad').textContent = genre.cad;
+    const scale = document.getElementById('progScale');
+    if (scale) scale.textContent = isMajor ? 'C MAJOR' : 'C MINOR';
   }
 
   items.forEach((btn, i) => {

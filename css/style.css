@@ -800,6 +800,13 @@ ol,ul{margin:0;padding:0;list-style:none}
   display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:6px;
 }
 .prog__chords li{display:flex;min-width:0}
+/* each proposal carries its pitches under the degree */
+.prog__chords button{flex-direction:column;gap:3px}
+.prog__chords b{font:inherit;line-height:1}
+.prog__chords small{
+  font-family:var(--font-mono);font-size:.5rem;font-weight:400;
+  letter-spacing:.06em;color:var(--muted-foreground);white-space:nowrap;
+}
 .prog__chords button{
   flex:1;display:flex;align-items:center;justify-content:center;
   padding:0;aspect-ratio:1/.82;border-radius:14px;
