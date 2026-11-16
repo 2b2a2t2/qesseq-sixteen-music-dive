@@ -161,7 +161,7 @@ if ('IntersectionObserver' in window) {
   // the row the higher variants show, per track (SEQMODE3/4, KEYMODE2/3/4)
   TRACKS.forEach(t => {
     t.row = {
-      len: 16, follow: t.follow ? 1 : 0, speed: 2, inch: 0, track: t.ch,
+      len: 16, follow: 0, speed: 2, inch: 0, track: t.ch,
       swing: 0, amt: 50,
       genre: 0, mood: 50, tens: 50, motion: 50, cad: 0, cpx: 50, phrase: 0, surp: 50
     };
@@ -183,10 +183,31 @@ if ('IntersectionObserver' in window) {
   const winOf = t => {
     const len = lenOf(t);
     if (len <= 16) return 0;
-    return clamp(Math.floor(step / 16) * 16, 0, (Math.ceil(len / 16) - 1) * 16);
+    return clamp(Math.floor(curPos() / 16) * 16, 0, (Math.ceil(len / 16) - 1) * 16);
   };
   // 1/16 is one 16th note: 60000 / BPM / 4, the rest scale off it
   const SPEED_DEN = [64, 32, 16, 8, 4, 2, 1, 0.5, 0.25];
+  // SeqSwingStyle's nominal pair ratios (SeqClock.h): OFF then MPC60 75,
+  // MPC3000 70, SP-1200 72, LinnDrum 62, 808 66, 909 64, shuffle 75, triplet 67.
+  // AMT scales each toward 50 = straight, which is what seqSwingRatioOf reports
+  const SWING_DEPTH = [50, 75, 70, 72, 62, 66, 64, 75, 67];
+
+  // a follower takes its position from its feeder's hits, so a rest in the
+  // feeder leaves it holding the chord it was on (SeqClock.h seqFollowOf /
+  // FOLLOW FREEZE)
+  const posOf = TRACKS.map(() => 0);
+  const followOn = t => !!t.follow && t.row.follow === 1;
+  const feederOf = t => TRACKS.find(x => 'CH ' + x.ch === t.follow) || null;
+  const soundsAt = (i, s) => voicesOf(TRACKS[i]).some((_, vi) => state[i][vi][s]);
+  const curPos = () => {
+    const t = TRACKS[current];
+    return followOn(t) && feederOf(t) ? posOf[current] : step;
+  };
+  const curHolding = () => {
+    const t = TRACKS[current];
+    const f = followOn(t) ? feederOf(t) : null;
+    return !!f && !soundsAt(TRACKS.indexOf(f), step);
+  };
   let retimeWalk = null;
   let editTarget = 0;                                  // 0 = STEPS, 1..4 = F keys
   let pageOpen = false;                                // the M2 page of this track
@@ -791,12 +812,15 @@ if ('IntersectionObserver' in window) {
     host.dataset.edit = editing ? '1' : '0';
     const win = winOf(t);
     const len = lenOf(t);
+    const pos = curPos();
+    const holding = curHolding();
+    host.dataset.hold = holding ? '1' : '0';
     cells.forEach((b, c) => {
       const n = win + c;
       const on = state[current][voice][n];
       b.dataset.on = on ? '1' : '0';
       b.setAttribute('aria-pressed', String(on));
-      b.classList.toggle('is-hit', on && n === step);
+      b.classList.toggle('is-hit', on && n === pos);
       // past the loop length the pad still holds its step, it just isn't played
       b.classList.toggle('is-out', n >= len);
       const has = bit !== 0 && (attrs[current][voice][n] & bit) !== 0;
@@ -806,12 +830,12 @@ if ('IntersectionObserver' in window) {
           : on ? ' on' : ' off'));
     });
     markTargets(t);
-    counter.textContent = String(step + 1).padStart(2, '0') + ' / ' +
+    counter.textContent = String(pos + 1).padStart(2, '0') + ' / ' +
       String(len).padStart(2, '0');
     if (speedOut) speedOut.textContent = SPEEDS[clamp(t.row.speed, 0, SPEEDS.length - 1)];
     const label = 'CH ' + t.ch + ' · ' + t.type + ' · ' + v.name +
       (t.follow ? ' ← ' + t.follow : '');
-    trackLabel.textContent = label;
+    trackLabel.textContent = label + (holding ? ' · FREEZE' : '');
     updateScreen();
     refreshKnobs();
   }
@@ -867,22 +891,45 @@ if ('IntersectionObserver' in window) {
       const den = SPEED_DEN[clamp(t.row.speed, 0, SPEED_DEN.length - 1)];
       return Math.max(30, Math.round((60000 / clock.bpm) * (4 / den)));
     };
+    // SeqSwingStyle's ratio scaled by AMT: 50 is straight, so the groove's own
+    // depth only reaches playback as far as AMT lets it
+    const swingRatio = () => {
+      const t = TRACKS[current];
+      const depth = SWING_DEPTH[clamp(t.row.swing, 0, SWING_DEPTH.length - 1)];
+      const amt = clamp(t.row.amt, 0, 100) / 100;
+      return 50 + (depth - 50) * amt;
+    };
+    // the step we are on holds this long: an even step hands over late to its
+    // off-beat partner by the ratio, and the partner hands back early
+    const stepDelay = () => {
+      const base = stepMs();
+      const ratio = swingRatio();
+      if (ratio <= 50.001) return base;
+      const pair = base * 2;
+      return step % 2 === 0 ? (pair * ratio) / 100 : (pair * (100 - ratio)) / 100;
+    };
     const tick = () => {
       step = (step + 1) % lenOf(TRACKS[current]);
+      // a follower only moves on its feeder's hits; a rest is the freeze
+      TRACKS.forEach((t, i) => {
+        const f = followOn(t) ? feederOf(t) : null;
+        if (!f) { posOf[i] = step % lenOf(t); return; }
+        if (soundsAt(TRACKS.indexOf(f), step)) posOf[i] = (posOf[i] + 1) % lenOf(t);
+      });
       // the line follows the track, the way the panel does
       if (step === 0 && !pinned) nextTrack();
       paint();
-      timer = setTimeout(tick, stepMs());
+      timer = setTimeout(tick, stepDelay());
     };
-    // a speed or BPM change lands on the step after this one, not the bar after
+    // a speed, BPM or swing change lands on the next step, not the bar after
     retimeWalk = () => {
       if (!timer) return;
       clearTimeout(timer);
-      timer = setTimeout(tick, stepMs());
+      timer = setTimeout(tick, stepDelay());
     };
     const io = new IntersectionObserver(entries => {
       entries.forEach(e => {
-        if (e.isIntersecting && !timer) timer = setTimeout(tick, stepMs());
+        if (e.isIntersecting && !timer) timer = setTimeout(tick, stepDelay());
         else if (!e.isIntersecting && timer) { clearTimeout(timer); timer = null; }
       });
     }, { threshold: 0.15 });

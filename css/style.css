@@ -435,6 +435,11 @@ ol,ul{margin:0;padding:0;list-style:none}
   border-color:color-mix(in oklab,var(--pad) 45%,transparent);
   box-shadow:none;
 }
+/* a frozen follower holds its step: the playhead reads as held, not hit */
+.stepgrid__line[data-hold="1"] .stepgrid__cell.is-hit::after{
+  background:#00fcfc;
+  box-shadow:0 0 10px color-mix(in oklab,#00fcfc 75%,transparent);
+}
 /* a step past the track's LEN keeps its content but is not played */
 .stepgrid__cell.is-out{opacity:.34}
 .stepgrid__cell[data-attr="1"]{
