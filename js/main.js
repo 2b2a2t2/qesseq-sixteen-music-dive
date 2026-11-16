@@ -1187,92 +1187,93 @@ if ('IntersectionObserver' in window) {
   checkFit();
   window.addEventListener('resize', checkFit, { passive: true });
 
-  if (!reduceMotion) {
-    let timer = null;
-    // Every track runs its own clock: its own SPEED, its own SWING and its own
-    // LEN, all over the one BPM — which is what the four lines on the device do
-    // at once.  A follower has no clock of its own: it steps when its feeder
-    // sounds, so the feeder keeps running through the freeze.
-    const stepMsOf = i => {
-      const t = TRACKS[i];
-      const den = SPEED_DEN[clamp(t.row.speed, 0, SPEED_DEN.length - 1)];
-      return Math.max(30, Math.round((60000 / clock.bpm) * (4 / den)));
-    };
-    // SeqSwingStyle's ratio scaled by AMT: 50 is straight, so a groove's own
-    // depth only reaches playback as far as AMT lets it
-    const swingOf = i => {
-      const p = TRACKS[i].row;
-      const depth = SWING_DEPTH[clamp(p.swing, 0, SWING_DEPTH.length - 1)];
-      return 50 + (depth - 50) * (clamp(p.amt, 0, 100) / 100);
-    };
-    // how long the step this track stands on holds: an even step hands over
-    // late to its off-beat partner by the ratio, and the partner hands back early
-    const durOf = (i, pos) => {
-      const base = stepMsOf(i);
-      const ratio = swingOf(i);
-      if (ratio <= 50.001) return base;
-      const pair = base * 2;
-      return pos % 2 === 0 ? (pair * ratio) / 100 : (pair * (100 - ratio)) / 100;
-    };
+  // The transport runs for everyone: a reduced-motion preference drops the
+  // transitions and the glows in CSS, but a frozen sequencer is missing the
+  // point of the card, so the clock is not behind that guard
+  let timer = null;
+  // Every track runs its own clock: its own SPEED, its own SWING and its own
+  // LEN, all over the one BPM — which is what the four lines on the device do
+  // at once.  A follower has no clock of its own: it steps when its feeder
+  // sounds, so the feeder keeps running through the freeze.
+  const stepMsOf = i => {
+    const t = TRACKS[i];
+    const den = SPEED_DEN[clamp(t.row.speed, 0, SPEED_DEN.length - 1)];
+    return Math.max(30, Math.round((60000 / clock.bpm) * (4 / den)));
+  };
+  // SeqSwingStyle's ratio scaled by AMT: 50 is straight, so a groove's own
+  // depth only reaches playback as far as AMT lets it
+  const swingOf = i => {
+    const p = TRACKS[i].row;
+    const depth = SWING_DEPTH[clamp(p.swing, 0, SWING_DEPTH.length - 1)];
+    return 50 + (depth - 50) * (clamp(p.amt, 0, 100) / 100);
+  };
+  // how long the step this track stands on holds: an even step hands over
+  // late to its off-beat partner by the ratio, and the partner hands back early
+  const durOf = (i, pos) => {
+    const base = stepMsOf(i);
+    const ratio = swingOf(i);
+    if (ratio <= 50.001) return base;
+    const pair = base * 2;
+    return pos % 2 === 0 ? (pair * ratio) / 100 : (pair * (100 - ratio)) / 100;
+  };
 
-    const nextAt = TRACKS.map(() => 0);
-    const isFollower = i => followOn(TRACKS[i]) && !!feederOf(TRACKS[i]);
+  const nextAt = TRACKS.map(() => 0);
+  const isFollower = i => followOn(TRACKS[i]) && !!feederOf(TRACKS[i]);
 
-    const tickAll = () => {
-      const now = performance.now();
-      const moved = TRACKS.map(() => false);
-      let changed = false;
-      TRACKS.forEach((t, i) => {
-        if (isFollower(i)) return;                 // driven by its feeder below
-        while (now >= nextAt[i]) {
-          posOf[i] = (posOf[i] + 1) % lenOf(t);
-          const d = durOf(i, posOf[i]);
-          nextAt[i] += d;
-          eventOf[i] = voicesOf(t).map((_, vi) => playEvent(i, vi, posOf[i], d));
-          moved[i] = true;
-          changed = true;
-        }
-      });
-      // a follower steps on its feeder's hits, and latches the chord it heard
-      TRACKS.forEach((t, i) => {
-        if (!moved[i] || !trackStrikes(i)) return;
-        const s = posOf[i];
-        TRACKS.forEach((f, j) => {
-          if (!isFollower(j) || feederOf(f) !== t) return;
-          posOf[j] = (posOf[j] + 1) % lenOf(f);
-          heldOf[j] = { degree: chordsOf[i][s], notes: chordNotes(i, s) };
-          changed = true;
-        });
-      });
-      if (changed) paint();
-    };
-
-    const startWalk = () => {
-      const now = performance.now();
-      TRACKS.forEach((t, i) => {
+  const tickAll = () => {
+    const now = performance.now();
+    const moved = TRACKS.map(() => false);
+    let changed = false;
+    TRACKS.forEach((t, i) => {
+      if (isFollower(i)) return;                 // driven by its feeder below
+      while (now >= nextAt[i]) {
+        posOf[i] = (posOf[i] + 1) % lenOf(t);
         const d = durOf(i, posOf[i]);
-        nextAt[i] = now + d;
+        nextAt[i] += d;
         eventOf[i] = voicesOf(t).map((_, vi) => playEvent(i, vi, posOf[i], d));
+        moved[i] = true;
+        changed = true;
+      }
+    });
+    // a follower steps on its feeder's hits, and latches the chord it heard
+    TRACKS.forEach((t, i) => {
+      if (!moved[i] || !trackStrikes(i)) return;
+      const s = posOf[i];
+      TRACKS.forEach((f, j) => {
+        if (!isFollower(j) || feederOf(f) !== t) return;
+        posOf[j] = (posOf[j] + 1) % lenOf(f);
+        heldOf[j] = { degree: chordsOf[i][s], notes: chordNotes(i, s) };
+        changed = true;
       });
-      timer = setInterval(tickAll, 15);
-    };
-    // a SPEED, BPM or SWING change lands on the next step, not the bar after
-    retimeWalk = () => {
-      if (!timer) return;
-      const now = performance.now();
-      TRACKS.forEach((t, i) => {
-        if (isFollower(i)) return;
-        nextAt[i] = Math.min(nextAt[i], now + durOf(i, posOf[i]));
-      });
-    };
-    const io = new IntersectionObserver(entries => {
-      entries.forEach(e => {
-        if (e.isIntersecting && !timer) startWalk();
-        else if (!e.isIntersecting && timer) { clearInterval(timer); timer = null; }
-      });
-    }, { threshold: 0.15 });
-    io.observe(card || document.body);
-  }
+    });
+    if (changed) paint();
+  };
+
+  const startWalk = () => {
+    const now = performance.now();
+    TRACKS.forEach((t, i) => {
+      const d = durOf(i, posOf[i]);
+      nextAt[i] = now + d;
+      eventOf[i] = voicesOf(t).map((_, vi) => playEvent(i, vi, posOf[i], d));
+    });
+    timer = setInterval(tickAll, 15);
+  };
+  // a SPEED, BPM or SWING change lands on the next step, not the bar after
+  retimeWalk = () => {
+    if (!timer) return;
+    const now = performance.now();
+    TRACKS.forEach((t, i) => {
+      if (isFollower(i)) return;
+      nextAt[i] = Math.min(nextAt[i], now + durOf(i, posOf[i]));
+    });
+  };
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting && !timer) startWalk();
+      else if (!e.isIntersecting && timer) { clearInterval(timer); timer = null; }
+    });
+  }, { threshold: 0.15 });
+  io.observe(card || document.body);
 })();
 
 /* ==========================================================

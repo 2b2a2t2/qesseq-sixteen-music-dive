@@ -1064,6 +1064,12 @@ ol,ul{margin:0;padding:0;list-style:none}
     transition-duration:.01ms!important;
   }
   .reveal{opacity:1;transform:none}
+  /* the sequencer keeps running under this preference - only the glow goes, so
+     the playhead reads as a lit pad rather than a pulse */
+  .stepgrid__cell.is-hit,
+  .stepgrid__chan.is-hit,
+  .stepgrid__cell.is-hit::after,
+  .stepgrid__cell.is-sustain::after{box-shadow:none!important}
 }
 
 /* ============ RESPONSIVE ============ */
