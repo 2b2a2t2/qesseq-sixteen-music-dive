@@ -435,6 +435,8 @@ ol,ul{margin:0;padding:0;list-style:none}
   border-color:color-mix(in oklab,var(--pad) 45%,transparent);
   box-shadow:none;
 }
+/* a step past the track's LEN keeps its content but is not played */
+.stepgrid__cell.is-out{opacity:.34}
 .stepgrid__cell[data-attr="1"]{
   border-color:#00fcfc;
   box-shadow:0 0 18px color-mix(in oklab,#00fcfc 55%,transparent);

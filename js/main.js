@@ -57,6 +57,7 @@ if ('IntersectionObserver' in window) {
 (function stepGrid() {
   const host = document.getElementById('stepRows');
   const counter = document.getElementById('stepCount');
+  const speedOut = document.getElementById('speedCount');
   const trackLabel = document.getElementById('stepTrack');
   const chanBar = document.getElementById('stepChans');
   const voiceBar = document.getElementById('stepVoices');
@@ -165,12 +166,28 @@ if ('IntersectionObserver' in window) {
       genre: 0, mood: 50, tens: 50, motion: 50, cad: 0, cpx: 50, phrase: 0, surp: 50
     };
   });
-  const state = TRACKS.map(t => voicesOf(t).map(v => v.pattern.split('').map(c => c === 'x')));
+  // a pattern runs to 64 steps, because SEQMODE3's LEN is 0..64.  The 16-pad
+  // line is the bar window over it (the firmware's C D E F window, driven by
+  // the clock here), and a track longer than its 16-step string repeats it
+  const STEPS_MAX = 64;
+  const state = TRACKS.map(t => voicesOf(t).map(v =>
+    Array.from({ length: STEPS_MAX }, (_, i) => v.pattern[i % 16] === 'x')));
   // per-step attributes, the ones the M1 edit row's F keys select: a bitmask
   // per step, so a step can carry TIE and ACCENT at once (Events.cpp stepAttrs)
   const ATTR_BIT = [0, 1, 2, 4, 8];                    // 1 TIE, 2 GLIDE, 4 ACC, 8 PROB
   const ATTR_NAME = [null, 'TIE', 'GLIDE', 'ACCENT', 'PROBABILITY'];
-  const attrs = TRACKS.map(t => voicesOf(t).map(() => new Uint8Array(16)));
+  const attrs = TRACKS.map(t => voicesOf(t).map(() => new Uint8Array(STEPS_MAX)));
+
+  // SEQMODE3's LEN is the loop length of the track in front of you
+  const lenOf = t => clamp(Math.round(t.row.len), 1, STEPS_MAX);
+  const winOf = t => {
+    const len = lenOf(t);
+    if (len <= 16) return 0;
+    return clamp(Math.floor(step / 16) * 16, 0, (Math.ceil(len / 16) - 1) * 16);
+  };
+  // 1/16 is one 16th note: 60000 / BPM / 4, the rest scale off it
+  const SPEED_DEN = [64, 32, 16, 8, 4, 2, 1, 0.5, 0.25];
+  let retimeWalk = null;
   let editTarget = 0;                                  // 0 = STEPS, 1..4 = F keys
   let pageOpen = false;                                // the M2 page of this track
   const variant = { enc: 1, seq: 1, key: 1 };          // ENC/SEQ/KEY 1..4
@@ -566,6 +583,7 @@ if ('IntersectionObserver' in window) {
       sp.set(t, clamp(sp.get(t) + steps, sp.min, sp.max));
       updateScreen();
       refreshKnobs();
+      if (retimeWalk) retimeWalk();       // LEN/SPEED/BPM move the clock itself
       return;
     }
     if (mode === 'key') {
@@ -652,19 +670,22 @@ if ('IntersectionObserver' in window) {
     host.style.setProperty('--pad', lineColor());
     host.setAttribute('aria-label', v.name + ' 16 steps');
     cells = [];
+    const win = winOf(t);
     for (let c = 0; c < 16; c++) {
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'stepgrid__cell' + (c % 4 === 0 ? ' is-beat' : '');
-      b.setAttribute('aria-label', v.name + ' step ' + (c + 1));
+      b.className = 'stepgrid__cell' + ((win + c) % 4 === 0 ? ' is-beat' : '');
+      b.setAttribute('aria-label', v.name + ' step ' + (win + c + 1));
       b.addEventListener('click', () => {
         pinned = true;
+        // the window moves with the playhead, so resolve the step on click
+        const at = winOf(TRACKS[current]) + c;
         // with an attribute armed the pads edit that flag instead of the note
         if (mode === 'seq' && stepEdit && editTarget &&
             targetAllowed(editTarget, TRACKS[current])) {
-          attrs[current][voice][c] ^= ATTR_BIT[editTarget];
+          attrs[current][voice][at] ^= ATTR_BIT[editTarget];
         } else {
-          state[current][voice][c] = !state[current][voice][c];
+          state[current][voice][at] = !state[current][voice][at];
         }
         paint();
       });
@@ -768,19 +789,26 @@ if ('IntersectionObserver' in window) {
       targetAllowed(editTarget, t);
     const bit = editing ? ATTR_BIT[editTarget] : 0;
     host.dataset.edit = editing ? '1' : '0';
+    const win = winOf(t);
+    const len = lenOf(t);
     cells.forEach((b, c) => {
-      b.dataset.on = state[current][voice][c] ? '1' : '0';
-      b.setAttribute('aria-pressed', String(state[current][voice][c]));
-      b.classList.toggle('is-hit', state[current][voice][c] && c === step);
-      const has = bit !== 0 && (attrs[current][voice][c] & bit) !== 0;
+      const n = win + c;
+      const on = state[current][voice][n];
+      b.dataset.on = on ? '1' : '0';
+      b.setAttribute('aria-pressed', String(on));
+      b.classList.toggle('is-hit', on && n === step);
+      // past the loop length the pad still holds its step, it just isn't played
+      b.classList.toggle('is-out', n >= len);
+      const has = bit !== 0 && (attrs[current][voice][n] & bit) !== 0;
       b.dataset.attr = has ? '1' : '0';
-      if (editing) {
-        b.setAttribute('aria-label', v.name + ' step ' + (c + 1) + ' ' +
-          ATTR_NAME[editTarget] + (has ? ' on' : ' off'));
-      }
+      b.setAttribute('aria-label', v.name + ' step ' + (n + 1) +
+        (editing ? ' ' + ATTR_NAME[editTarget] + (has ? ' on' : ' off')
+          : on ? ' on' : ' off'));
     });
     markTargets(t);
-    counter.textContent = String(step + 1).padStart(2, '0') + ' / 16';
+    counter.textContent = String(step + 1).padStart(2, '0') + ' / ' +
+      String(len).padStart(2, '0');
+    if (speedOut) speedOut.textContent = SPEEDS[clamp(t.row.speed, 0, SPEEDS.length - 1)];
     const label = 'CH ' + t.ch + ' · ' + t.type + ' · ' + v.name +
       (t.follow ? ' ← ' + t.follow : '');
     trackLabel.textContent = label;
@@ -833,16 +861,29 @@ if ('IntersectionObserver' in window) {
 
   if (!reduceMotion) {
     let timer = null;
+    // one step is SPEED's own note value at BPM, so the row drives the walk
+    const stepMs = () => {
+      const t = TRACKS[current];
+      const den = SPEED_DEN[clamp(t.row.speed, 0, SPEED_DEN.length - 1)];
+      return Math.max(30, Math.round((60000 / clock.bpm) * (4 / den)));
+    };
     const tick = () => {
-      step = (step + 1) % 16;
+      step = (step + 1) % lenOf(TRACKS[current]);
       // the line follows the track, the way the panel does
       if (step === 0 && !pinned) nextTrack();
       paint();
+      timer = setTimeout(tick, stepMs());
+    };
+    // a speed or BPM change lands on the step after this one, not the bar after
+    retimeWalk = () => {
+      if (!timer) return;
+      clearTimeout(timer);
+      timer = setTimeout(tick, stepMs());
     };
     const io = new IntersectionObserver(entries => {
       entries.forEach(e => {
-        if (e.isIntersecting && !timer) timer = setInterval(tick, 140);
-        else if (!e.isIntersecting && timer) { clearInterval(timer); timer = null; }
+        if (e.isIntersecting && !timer) timer = setTimeout(tick, stepMs());
+        else if (!e.isIntersecting && timer) { clearTimeout(timer); timer = null; }
       });
     }, { threshold: 0.15 });
     io.observe(card || document.body);
