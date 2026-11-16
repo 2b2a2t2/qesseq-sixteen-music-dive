@@ -278,7 +278,6 @@ if ('IntersectionObserver' in window) {
   let cells = [];
   let current = 0;
   let voice = 0;
-  let pinned = false;
 
   TRACKS.forEach((t, i) => {
     const b = document.createElement('button');
@@ -288,7 +287,7 @@ if ('IntersectionObserver' in window) {
     b.innerHTML = '<b>CH ' + t.ch + '</b><small>' + t.type + (t.follow ? ' ← ' + t.follow : '') + '</small>';
     b.setAttribute('role', 'tab');
     b.setAttribute('aria-label', 'Channel ' + t.ch + ' — ' + t.type + ' track');
-    b.addEventListener('click', () => { pinned = true; selectTrack(i, 0); });
+    b.addEventListener('click', () => selectTrack(i, 0));
     chanBar.appendChild(b);
     tabs[i] = b;
   });
@@ -307,7 +306,7 @@ if ('IntersectionObserver' in window) {
       b.textContent = v.name;
       b.setAttribute('role', 'tab');
       b.setAttribute('aria-label', v.name + ' voice, channel ' + TRACKS[current].ch);
-      b.addEventListener('click', () => { pinned = true; selectVoice(i); });
+      b.addEventListener('click', () => selectVoice(i));
       voiceBar.appendChild(b);
       voiceTabs[i] = b;
     });
@@ -354,7 +353,6 @@ if ('IntersectionObserver' in window) {
 
   modePads.forEach(b => {
           b.addEventListener('click', () => {
-        pinned = true;
         // a second click on the mode you are already in steps its variant
         const m = b.dataset.mode;
         variant[m] = mode === m ? variant[m] % 4 + 1 : 1;
@@ -366,7 +364,6 @@ if ('IntersectionObserver' in window) {
   if (stepEditArm) {
     stepEditArm.addEventListener('click', () => {
       stepEdit = !stepEdit;
-      pinned = true;
       stepEditArm.setAttribute('aria-pressed', String(stepEdit));
       paint();
     });
@@ -824,7 +821,6 @@ if ('IntersectionObserver' in window) {
       // SEQMODE3 is the pattern-setup screen and carries no page on the device
       if (mode === 'seq' && variant.seq === 3) return;
       if (!pageOf(TRACKS[current])) return;      // this track carries no page
-      pinned = true;
       pageOpen = !pageOpen;
       if (pageOpen && stepEdit) {
         stepEdit = false;
@@ -837,7 +833,6 @@ if ('IntersectionObserver' in window) {
   targetButtons.forEach(b => {
     b.addEventListener('click', () => {
       const n = Number(b.dataset.target);
-      pinned = true;
       editTarget = editTarget === n ? 0 : n;
       paint();
     });
@@ -904,21 +899,20 @@ if ('IntersectionObserver' in window) {
 
     k.addEventListener('click', () => {
       if (moved) { moved = false; return; }
-      pinned = true;
       nudge(i, mode === 'enc' ? 2 : 1);
     });
     k.addEventListener('wheel', e => {
-      e.preventDefault(); pinned = true;
+      e.preventDefault();
       nudge(i, e.deltaY < 0 ? 1 : -1);
     }, { passive: false });
     k.addEventListener('keydown', e => {
       const dir = e.key === 'ArrowUp' || e.key === 'ArrowRight' ? 1
         : e.key === 'ArrowDown' || e.key === 'ArrowLeft' ? -1 : 0;
       if (!dir) return;
-      e.preventDefault(); pinned = true; nudge(i, dir);
+      e.preventDefault(); nudge(i, dir);
     });
     k.addEventListener('pointerdown', e => {
-      drag = { y: e.clientY, cc: encVals[i], acc: 0 }; moved = false; pinned = true;
+      drag = { y: e.clientY, cc: encVals[i], acc: 0 }; moved = false;
       k.setPointerCapture(e.pointerId);
     });
     k.addEventListener('pointermove', e => {
@@ -959,7 +953,6 @@ if ('IntersectionObserver' in window) {
       b.className = 'stepgrid__cell' + ((win + c) % 4 === 0 ? ' is-beat' : '');
       b.setAttribute('aria-label', v.name + ' step ' + (win + c + 1));
       b.addEventListener('click', () => {
-        pinned = true;
         // the window moves with the playhead, so resolve the step on click
         const at = winOf(TRACKS[current]) + c;
         // with an attribute armed the pads edit that flag instead of the note
@@ -1145,7 +1138,6 @@ if ('IntersectionObserver' in window) {
     const turn = dir => {
       const t = TRACKS[current];
       t[key] = (t[key] + dir + list.length) % list.length;
-      pinned = true;
       updateScreen();
     };
     el.addEventListener('click', e => turn(e.shiftKey ? -1 : 1));
@@ -1167,7 +1159,6 @@ if ('IntersectionObserver' in window) {
   const genPad = document.getElementById('genPad');
   if (genPad) {
     genPad.addEventListener('click', () => {
-      pinned = true;
       if (TRACKS[current].type === 'DRUM') drumProduce(current, true);
       else generateProgression(true);
       paint();
@@ -1218,35 +1209,40 @@ if ('IntersectionObserver' in window) {
   };
 
   const nextAt = TRACKS.map(() => 0);
-  const isFollower = i => followOn(TRACKS[i]) && !!feederOf(TRACKS[i]);
+  // who is driven by whom: -1 runs its own clock, otherwise the feeder's index
+  const feeders = () => TRACKS.map(t => (followOn(t) ? TRACKS.indexOf(feederOf(t)) : -1));
+  // the event each voice of a track resolves to at the step it stands on
+  const resolve = (i, d) => {
+    eventOf[i] = voicesOf(TRACKS[i]).map((_, vi) => playEvent(i, vi, posOf[i], d));
+  };
 
   const tickAll = () => {
     const now = performance.now();
-    const moved = TRACKS.map(() => false);
-    let changed = false;
-    TRACKS.forEach((t, i) => {
-      if (isFollower(i)) return;                 // driven by its feeder below
-      while (now >= nextAt[i]) {
-        posOf[i] = (posOf[i] + 1) % lenOf(t);
-        const d = durOf(i, posOf[i]);
-        nextAt[i] += d;
-        eventOf[i] = voicesOf(t).map((_, vi) => playEvent(i, vi, posOf[i], d));
-        moved[i] = true;
-        changed = true;
-      }
+    const feeder = feeders();
+    const moved = TRACKS.map((t, i) => {
+      if (feeder[i] >= 0 || now < nextAt[i]) return false;   // a follower waits
+      posOf[i] = (posOf[i] + 1) % lenOf(t);
+      const d = durOf(i, posOf[i]);
+      nextAt[i] += d;
+      // a stall (an idle tab, a busy frame) skips the gap rather than firing a
+      // burst of steps to catch up: the grid holds, the missed steps don't
+      if (nextAt[i] <= now) nextAt[i] = now + d;
+      resolve(i, d);
+      return true;
     });
-    // a follower steps on its feeder's hits, and latches the chord it heard
+    // a follower steps on its feeder's hits and latches the chord it heard
     TRACKS.forEach((t, i) => {
       if (!moved[i] || !trackStrikes(i)) return;
       const s = posOf[i];
       TRACKS.forEach((f, j) => {
-        if (!isFollower(j) || feederOf(f) !== t) return;
+        if (feeder[j] !== i) return;
         posOf[j] = (posOf[j] + 1) % lenOf(f);
         heldOf[j] = { degree: chordsOf[i][s], notes: chordNotes(i, s) };
-        changed = true;
+        resolve(j, durOf(j, posOf[j]));
+        moved[j] = true;
       });
     });
-    if (changed) paint();
+    if (moved.some(Boolean)) paint();
   };
 
   const startWalk = () => {
@@ -1254,7 +1250,7 @@ if ('IntersectionObserver' in window) {
     TRACKS.forEach((t, i) => {
       const d = durOf(i, posOf[i]);
       nextAt[i] = now + d;
-      eventOf[i] = voicesOf(t).map((_, vi) => playEvent(i, vi, posOf[i], d));
+      resolve(i, d);
     });
     timer = setInterval(tickAll, 15);
   };
@@ -1262,8 +1258,9 @@ if ('IntersectionObserver' in window) {
   retimeWalk = () => {
     if (!timer) return;
     const now = performance.now();
+    const feeder = feeders();
     TRACKS.forEach((t, i) => {
-      if (isFollower(i)) return;
+      if (feeder[i] >= 0) return;
       nextAt[i] = Math.min(nextAt[i], now + durOf(i, posOf[i]));
     });
   };
