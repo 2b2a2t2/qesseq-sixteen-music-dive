@@ -420,6 +420,9 @@ if ('IntersectionObserver' in window) {
     'DUBTECHNO', 'GOSPEL', 'LATIN', 'CINEMATIC', 'MODAL'];
   const MOODS = ['DARK', 'COOL', 'MIXED', 'WARM', 'LIGHT'];
   const CADENCES = ['AUTH', 'PLAG', 'DECP', 'HALF'];
+  // Key4.cpp's short forms for the value column, and its phrase plan names
+  const CADENCE_PAIRS = ['V-I', 'IV-I', 'V-vi', 'ii-V'];
+  const PHRASE_NAMES = ['FREE', 'AABB', 'ABAB', 'ABAC', 'AABA'];
   const TRACK_TYPES = ['DRUM', 'POLY', 'MONO'];
   const blank = { label: '—', dash: true };
   const octRow = { label: 'OCT', min: 0, max: 7, get: t => t.oct, set: (t, v) => { t.oct = v; } };
@@ -464,12 +467,116 @@ if ('IntersectionObserver' in window) {
       { label: 'MOOD', min: 0, max: 100, get: t => t.row.mood, set: (t, v) => { t.row.mood = v; }, fmt: v => MOODS[clamp(Math.floor(v / 20), 0, 4)] },
       pctRow('TENS', 'tens'),
       pctRow('MOTION', 'motion'),
-      { label: 'CAD', min: 0, max: 3, get: t => t.row.cad, set: (t, v) => { t.row.cad = v; }, fmt: v => CADENCES[v] },
+      { label: 'CAD', min: 0, max: 3, get: t => t.row.cad, set: (t, v) => { t.row.cad = v; }, fmt: v => CADENCE_PAIRS[v] },
       pctRow('CPX', 'cpx'),
-      { label: 'PHRASE', min: 0, max: 4, get: t => t.row.phrase, set: (t, v) => { t.row.phrase = v; } },
+      { label: 'PHRASE', min: 0, max: 4, get: t => t.row.phrase, set: (t, v) => { t.row.phrase = v; }, fmt: v => PHRASE_NAMES[v] },
       pctRow('SURP', 'surp')
     ]
   };
+
+  // ---- KEYMODE4: the chord engine -------------------------------------
+  // The eight knobs of KEY 4 shape a progression that lands in CH 2's steps.
+  // GENRE indexes genre_data.h's 7x7 degree transition matrix, MOOD tilts the
+  // walk between the minor and major degrees, MOTION is how often a chord slot
+  // actually moves, CPX how many distinct chords the bar may use, TENS adds the
+  // 7th/9th to the name, CAD lands the bar's last slot on the cadence's degree,
+  // PHRASE repeats slots in the plan's shape and SURP is the chance to ignore
+  // the matrix for a random degree.  A bar is four chord slots of four steps,
+  // so a 16-step pattern carries all four.
+  const KEY_GENRE_MATRIX = [
+    /* POP        */ [[50,6,4,14,17,7,2],[22,24,7,8,32,6,1],[20,10,27,15,5,16,7],[35,5,5,20,27,5,3],[40,6,3,14,30,6,1],[17,14,9,17,15,18,10],[36,2,20,8,5,9,20]],
+    /* ROCK       */ [[26,9,4,29,16,14,2],[16,13,4,16,37,13,1],[9,16,9,14,6,38,8],[51,5,3,10,23,5,3],[56,5,1,13,12,12,1],[24,23,7,22,11,10,3],[27,4,17,24,7,14,7]],
+    /* JAZZ       */ [[18,15,6,30,11,15,5],[8,15,2,2,68,3,2],[7,14,2,5,6,65,1],[35,6,11,13,6,16,13],[77,6,4,3,6,3,1],[7,63,4,3,9,11,3],[17,3,57,3,5,13,2]],
+    /* CLASSICAL  */ [[22,12,1,13,46,3,3],[16,41,1,1,38,1,2],[9,10,19,7,2,52,1],[52,15,1,7,17,1,7],[70,4,1,1,20,3,1],[8,49,3,6,10,22,2],[58,5,4,2,14,0,17]],
+    /* FOLK       */ [[27,10,2,24,29,6,2],[6,9,2,2,77,4,0],[7,10,5,16,7,39,16],[51,8,1,8,27,3,2],[73,5,1,5,11,5,0],[12,34,12,9,19,11,3],[44,0,25,3,7,12,9]],
+    /* COUNTRY    */ [[35,7,4,23,21,7,3],[15,21,4,6,48,5,1],[15,10,19,12,5,33,6],[47,5,4,14,20,5,5],[57,5,2,9,21,5,1],[13,33,7,16,12,13,6],[40,2,21,6,4,8,19]],
+    /* BLUES      */ [[39,5,2,24,22,5,3],[15,21,4,6,48,5,1],[16,11,20,13,6,27,7],[47,4,4,12,26,4,3],[53,4,2,13,23,4,1],[18,26,7,12,17,14,6],[38,2,18,8,4,7,23]],
+    /* RNB        */ [[42,9,4,16,18,9,2],[10,18,3,4,61,3,1],[15,10,18,12,5,34,6],[39,6,6,16,23,6,4],[60,5,2,8,19,5,1],[13,39,6,11,12,13,6],[40,2,24,7,5,9,13]],
+    /* FUNK       */ [[48,6,3,19,16,6,2],[15,21,4,6,48,5,1],[16,11,20,13,6,27,7],[46,5,4,17,20,5,3],[53,5,3,10,22,6,1],[15,28,8,13,14,15,7],[39,2,21,6,5,8,19]],
+    /* METAL      */ [[42,6,3,19,16,10,4],[15,21,4,6,48,5,1],[16,11,20,13,5,26,9],[46,5,5,14,21,5,4],[60,5,2,8,19,5,1],[20,25,7,12,12,13,11],[44,2,20,6,4,13,11]],
+    /* HIPHOP     */ [[49,6,3,14,16,9,3],[15,21,4,6,48,5,1],[16,11,20,13,6,27,7],[37,5,5,15,29,5,4],[52,5,2,10,22,8,1],[20,23,6,15,11,19,6],[30,2,23,7,5,15,18]],
+    /* ELECTRONIC */ [[40,6,3,18,25,6,2],[15,21,4,6,48,5,1],[16,11,20,13,6,27,7],[55,4,4,12,18,4,3],[58,4,2,8,18,9,1],[13,24,6,22,11,18,6],[34,2,26,7,6,10,15]],
+    /* REGGAE     */ [[44,6,3,22,16,6,3],[15,21,4,6,48,5,1],[16,11,20,13,6,27,7],[47,5,4,13,24,4,3],[60,5,2,8,19,5,1],[15,28,8,13,14,15,7],[41,2,21,6,5,8,17]],
+    /* DUBTECHNO  */ [[60,1,8,12,10,1,8],[45,15,8,12,10,5,5],[50,2,15,8,7,8,10],[55,2,5,20,8,5,5],[55,2,5,8,20,5,5],[45,2,15,8,7,15,8],[52,2,8,8,7,5,18]],
+    /* GOSPEL     */ [[40,9,3,21,17,8,2],[12,16,3,4,60,4,1],[16,11,20,13,6,27,7],[49,5,4,13,20,5,4],[51,5,3,13,21,6,1],[14,36,7,12,12,13,6],[42,2,23,7,5,8,13]],
+    /* LATIN      */ [[39,6,3,21,21,8,2],[15,21,4,6,48,5,1],[16,11,20,13,6,27,7],[35,5,5,14,32,5,4],[62,4,2,8,17,6,1],[14,27,7,13,18,14,7],[40,2,24,7,5,9,13]],
+    /* CINEMATIC  */ [[40,6,3,19,20,10,2],[15,21,4,6,48,5,1],[16,11,20,13,6,27,7],[36,5,4,15,31,5,4],[52,5,2,10,22,8,1],[13,25,7,18,12,19,6],[33,2,25,7,6,12,15]],
+    /* MODAL      */ [[57,5,2,14,15,5,2],[15,21,4,6,48,5,1],[16,11,20,13,6,27,7],[46,5,5,14,21,5,4],[60,5,2,8,19,5,1],[15,28,8,13,14,15,7],[42,2,20,6,6,8,16]],
+  ];
+  const DEGREES = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii'];
+  const PHRASE_PLANS = [[0, 1, 2, 3], [0, 0, 1, 1], [0, 1, 0, 1], [0, 1, 0, 2], [0, 0, 1, 0]];
+  const CADENCE_LANDING = [0, 0, 5, 4];       // V-I, IV-I, V-vi, ii-V
+  const MINOR_DEGREES = [1, 2, 5];
+  const chordsOf = TRACKS.map(() => new Int8Array(STEPS_MAX).fill(-1));
+  let chordRoll = 20260101;
+
+  // imul keeps the roll inside 32 bits: plain multiplication overflowed the
+  // double's 53-bit mantissa and degenerated into a short cycle
+  const chordRand = () => {
+    chordRoll = (Math.imul(chordRoll, 1664525) + 1013904223) >>> 0;
+    return chordRoll / 4294967296;
+  };
+
+  // the degree a step carries, or -1 where the engine has not written one
+  function chordName(trackIdx, s) {
+    const d = chordsOf[trackIdx][s];
+    if (d === undefined || d < 0) return '';
+    const p = TRACKS[trackIdx].row;
+    // tension only colours the chord once it is past the neutral midpoint
+    const ext = p.tens >= 80 ? '9' : p.tens >= 60 ? '7' : '';
+    return DEGREES[d] + ext;
+  }
+
+  function generateProgression(reseed) {
+    if (reseed) chordRoll = (Date.now() & 0x7fffffff) || 1;   // M3 rolls fresh
+    const p = TRACKS[1].row;
+    const mat = KEY_GENRE_MATRIX[clamp(p.genre, 0, KEY_GENRE_MATRIX.length - 1)];
+    const mood = (clamp(p.mood, 0, 100) - 50) / 50;      // -1 DARK .. +1 LIGHT
+    const motion = clamp(p.motion, 0, 100);
+    const surprise = clamp(p.surp, 0, 100);
+    const plan = PHRASE_PLANS[clamp(p.phrase, 0, PHRASE_PLANS.length - 1)];
+    const distinct = 1 + Math.round((clamp(p.cpx, 0, 100) / 100) * 3);   // 1..4 a bar
+
+    // one move of the genre's walk, weighted by its row and tilted by mood
+    const move = from => {
+      if (chordRand() * 100 < surprise) return clamp(Math.floor(chordRand() * 7), 0, 6);
+      // MOTION pushes the walk off the degree it is on, MOOD tilts it between
+      // the minor and major ones
+      const row = mat[from].map((w, i) => {
+        // past halfway MOTION means leave: the degree you are on is off the menu
+        if (i === from && motion >= 60) return 0;
+        let weight = i === from ? w * (1 - motion / 100) : w;
+        weight += (MINOR_DEGREES.indexOf(i) >= 0 ? -mood : mood) * 30;
+        return Math.max(0.5, weight);
+      });
+      const total = row.reduce((a, b) => a + b, 0);
+      let r = chordRand() * total;
+      for (let i = 0; i < row.length; i++) { r -= row[i]; if (r <= 0) return i; }
+      return 0;
+    };
+
+    const walk = [0];
+    for (let i = 1; i < 4; i++) {
+      const holds = chordRand() * 100 >= motion;           // MOTION: move or hold
+      const next = holds ? walk[i - 1] : move(walk[i - 1]);
+      walk[i] = i >= distinct ? walk[i - 1] : next;        // CPX caps distinct chords
+    }
+    const slots = plan.map(src => walk[src]);
+    slots[3] = CADENCE_LANDING[clamp(p.cad, 0, 3)];         // the cadence lands the bar
+
+    for (let s = 0; s < STEPS_MAX; s++) {
+      chordsOf[1][s] = slots[Math.floor((s % 16) / 4)];
+    }
+    // the chord changes are the steps that sound; the track keeps its own hits
+    const voice0 = state[1][0];
+    for (let s = 0; s < STEPS_MAX; s++) if (s % 4 === 0) voice0[s] = true;
+  }
+
+  // the four slots of CH 2's bar, as the card shows them on the track line
+  function chordLine() {
+    const names = [0, 1, 2, 3].map(i => chordName(1, i * 4)).filter(Boolean);
+    return names.length === 4 ? ' · ' + names.join('–') : '';
+  }
 
   // the mode's own variant: SEQ 1/2 share the base row, KEY 1 is the keyboard
   // screen, everything above 2 gets the variant row
@@ -605,6 +712,7 @@ if ('IntersectionObserver' in window) {
       updateScreen();
       refreshKnobs();
       if (retimeWalk) retimeWalk();       // LEN/SPEED/BPM move the clock itself
+      if (rk === 'key4') { generateProgression(); paint(); }   // the row is live
       return;
     }
     if (mode === 'key') {
@@ -825,7 +933,9 @@ if ('IntersectionObserver' in window) {
       b.classList.toggle('is-out', n >= len);
       const has = bit !== 0 && (attrs[current][voice][n] & bit) !== 0;
       b.dataset.attr = has ? '1' : '0';
+      const chord = current === 1 ? chordName(1, n) : '';
       b.setAttribute('aria-label', v.name + ' step ' + (n + 1) +
+        (chord ? ' · ' + chord : '') +
         (editing ? ' ' + ATTR_NAME[editTarget] + (has ? ' on' : ' off')
           : on ? ' on' : ' off'));
     });
@@ -835,7 +945,8 @@ if ('IntersectionObserver' in window) {
     if (speedOut) speedOut.textContent = SPEEDS[clamp(t.row.speed, 0, SPEEDS.length - 1)];
     const label = 'CH ' + t.ch + ' · ' + t.type + ' · ' + v.name +
       (t.follow ? ' ← ' + t.follow : '');
-    trackLabel.textContent = label + (holding ? ' · FREEZE' : '');
+    trackLabel.textContent = label + (current === 1 ? chordLine() : '') +
+      (holding ? ' · FREEZE' : '');
     updateScreen();
     refreshKnobs();
   }
@@ -871,6 +982,16 @@ if ('IntersectionObserver' in window) {
   stepSetting(keyRoot, 'root', ROOTS);
 
   if (gridCard) gridCard.dataset.mode = mode;
+  // M3 is the firmware's generate: it re-rolls the progression by hand
+  const genPad = document.getElementById('genPad');
+  if (genPad) {
+    genPad.addEventListener('click', () => {
+      pinned = true;
+      generateProgression(true);
+      paint();
+    });
+  }
+  generateProgression();
   selectTrack(0, 0);
 
   // show the "swipe" hint only when the pads overflow their card
