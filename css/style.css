@@ -389,6 +389,12 @@ ol,ul{margin:0;padding:0;list-style:none}
 .stepgrid__chan b{font-size:.6rem;font-weight:600;letter-spacing:.14em}
 .stepgrid__chan small{font-size:.46rem;font-weight:500;letter-spacing:.14em;opacity:.7}
 .stepgrid__chan.is-voice{padding:5px 11px;font-size:.55rem;letter-spacing:.16em}
+/* every track runs at once: a tab pulses while its track is sounding */
+.stepgrid__chan.is-hit{
+  color:var(--foreground);
+  border-color:color-mix(in oklab,var(--pad) 62%,transparent);
+  box-shadow:0 0 14px color-mix(in oklab,var(--pad) 38%,transparent);
+}
 .stepgrid__chan:hover{color:var(--foreground);border-color:color-mix(in oklab,var(--pad) 50%,transparent)}
 .stepgrid__chan[data-on="1"]{
   color:var(--foreground);
