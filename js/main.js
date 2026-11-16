@@ -227,8 +227,6 @@ if ('IntersectionObserver' in window) {
   const posOf = TRACKS.map(() => 0);
   const followOn = t => !!t.follow && t.row.follow === 1;
   const feederOf = t => TRACKS.find(x => 'CH ' + x.ch === t.follow) || null;
-  const soundsAt = (i, s) => voicesOf(TRACKS[i]).some((_, vi) => state[i][vi][s]);
-
   // What the transport does with a step is what the M1 flags are for: TIE holds
   // the previous note instead of re-striking, ACCENT takes the track's accent
   // velocity, GLIDE slides in from the last pitch, PROBABILITY can drop the
