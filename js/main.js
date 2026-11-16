@@ -228,14 +228,47 @@ if ('IntersectionObserver' in window) {
   const followOn = t => !!t.follow && t.row.follow === 1;
   const feederOf = t => TRACKS.find(x => 'CH ' + x.ch === t.follow) || null;
   const soundsAt = (i, s) => voicesOf(TRACKS[i]).some((_, vi) => state[i][vi][s]);
+
+  // What the transport does with a step is what the M1 flags are for: TIE holds
+  // the previous note instead of re-striking, ACCENT takes the track's accent
+  // velocity, GLIDE slides in from the last pitch, PROBABILITY can drop the
+  // step, and GATE decides how long the hit lasts.  One event per voice per
+  // step, resolved when the step arrives, so the flag has a consequence rather
+  // than being a stored bit.
+  const eventOf = TRACKS.map(t => voicesOf(t).map(() => null));
+  function playEvent(i, vi, s, durMs) {
+    const t = TRACKS[i];
+    const bits = attrs[i][vi][s];
+    const prev = eventOf[i][vi];
+    const gate = clamp(t.gate, 10, 100) / 100;
+    const silent = { strike: false, held: false, vel: 0, glide: false, lenMs: 0 };
+    if (!state[i][vi][s]) return silent;
+    // a TIE carries the note through this step instead of hitting it again
+    if ((bits & ATTR_BIT[1]) && prev && (prev.strike || prev.held)) {
+      return { strike: false, held: true, vel: prev.vel, glide: false,
+        lenMs: prev.lenMs + durMs * gate };
+    }
+    if ((bits & ATTR_BIT[4]) && Math.random() * 100 >= clamp(t.prob, 0, 100)) {
+      return silent;
+    }
+    return {
+      strike: true,
+      held: false,
+      vel: (bits & ATTR_BIT[3]) ? Math.max(t.vel, t.acc) : t.vel,
+      glide: (bits & ATTR_BIT[2]) !== 0,
+      lenMs: durMs * gate,
+    };
+  }
+  const trackStrikes = i => eventOf[i].some(e => !!e && e.strike);
+  const voiceEvent = () => eventOf[current][voice] || null;
   // every track keeps its own playhead, because every track is playing
   const curPos = () => posOf[current];
   const curHolding = () => {
     const t = TRACKS[current];
     const f = followOn(t) ? feederOf(t) : null;
     if (!f) return false;
-    const fi = TRACKS.indexOf(f);
-    return !soundsAt(fi, posOf[fi]);
+    // a tie is not a new chord, so the follower freezes on it too
+    return !trackStrikes(TRACKS.indexOf(f));
   };
   let retimeWalk = null;
   let editTarget = 0;                                  // 0 = STEPS, 1..4 = F keys
@@ -965,14 +998,28 @@ if ('IntersectionObserver' in window) {
       const on = state[current][voice][n];
       b.dataset.on = on ? '1' : '0';
       b.setAttribute('aria-pressed', String(on));
-      b.classList.toggle('is-hit', on && n === pos);
+      const ev = n === pos ? voiceEvent() : null;
+      b.classList.toggle('is-hit', !!ev && ev.strike);
+      b.classList.toggle('is-sustain', !!ev && ev.held);
+      b.dataset.play = ev ? (ev.strike ? 'strike' : ev.held ? 'tie' : 'rest') : '';
+      b.dataset.glide = ev && ev.glide ? '1' : '0';
+      if (ev && (ev.strike || ev.held)) b.dataset.vel = String(ev.vel);
+      else delete b.dataset.vel;
+      if (ev && ev.strike) b.style.setProperty('--hit-vel', (ev.vel / 127).toFixed(3));
+      else b.style.removeProperty('--hit-vel');
       // past the loop length the pad still holds its step, it just isn't played
       b.classList.toggle('is-out', n >= len);
       const has = bit !== 0 && (attrs[current][voice][n] & bit) !== 0;
       b.dataset.attr = has ? '1' : '0';
       const chord = current === 1 ? chordName(1, n) : '';
       const notes = current === 1 ? chordNotes(1, n) : [];
-      b.title = notes.length ? notes.join(' ') : '';
+      const say = [];
+      if (notes.length) say.push(notes.join(' '));
+      if (ev && (ev.strike || ev.held)) say.push('vel ' + ev.vel);
+      if (ev && ev.strike) say.push(Math.round(ev.lenMs) + ' ms');
+      if (ev && ev.glide) say.push('glide');
+      if (ev && ev.held) say.push('tied');
+      b.title = say.join(' · ');
       b.setAttribute('aria-label', v.name + ' step ' + (n + 1) +
         (chord ? ' · ' + chord : '') +
         (notes.length ? ' (' + notes.join(' ') + ')' : '') +
@@ -984,8 +1031,7 @@ if ('IntersectionObserver' in window) {
     TRACKS.forEach((tab_t, i) => {
       const tab = tabs[i];
       if (!tab) return;
-      const p = posOf[i];
-      tab.classList.toggle('is-hit', voicesOf(tab_t).some((_, vi) => state[i][vi][p]));
+      tab.classList.toggle('is-hit', trackStrikes(i));
     });
     counter.textContent = String(pos + 1).padStart(2, '0') + ' / ' +
       String(len).padStart(2, '0');
@@ -1094,14 +1140,16 @@ if ('IntersectionObserver' in window) {
         if (isFollower(i)) return;                 // driven by its feeder below
         while (now >= nextAt[i]) {
           posOf[i] = (posOf[i] + 1) % lenOf(t);
-          nextAt[i] += durOf(i, posOf[i]);
+          const d = durOf(i, posOf[i]);
+          nextAt[i] += d;
+          eventOf[i] = voicesOf(t).map((_, vi) => playEvent(i, vi, posOf[i], d));
           moved[i] = true;
           changed = true;
         }
       });
       // a follower steps on its feeder's hits, and latches the chord it heard
       TRACKS.forEach((t, i) => {
-        if (!moved[i] || !soundsAt(i, posOf[i])) return;
+        if (!moved[i] || !trackStrikes(i)) return;
         const s = posOf[i];
         TRACKS.forEach((f, j) => {
           if (!isFollower(j) || feederOf(f) !== t) return;
@@ -1115,7 +1163,11 @@ if ('IntersectionObserver' in window) {
 
     const startWalk = () => {
       const now = performance.now();
-      TRACKS.forEach((t, i) => { nextAt[i] = now + durOf(i, posOf[i]); });
+      TRACKS.forEach((t, i) => {
+        const d = durOf(i, posOf[i]);
+        nextAt[i] = now + d;
+        eventOf[i] = voicesOf(t).map((_, vi) => playEvent(i, vi, posOf[i], d));
+      });
       timer = setInterval(tickAll, 15);
     };
     // a SPEED, BPM or SWING change lands on the next step, not the bar after

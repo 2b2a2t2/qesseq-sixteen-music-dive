@@ -426,14 +426,27 @@ ol,ul{margin:0;padding:0;list-style:none}
   box-shadow:0 0 16px color-mix(in oklab,var(--pad) 55%,transparent);
 }
 .stepgrid__cell[data-on="1"]::after{background:var(--pad)}
+/* the strike's glow follows the velocity the step actually played at */
 .stepgrid__cell.is-hit{
   transform:scale(1.12);
   border-color:var(--pad);
-  box-shadow:0 0 20px color-mix(in oklab,var(--pad) 75%,transparent);
+  box-shadow:0 0 calc(9px + 15px * var(--hit-vel, .7))
+    color-mix(in oklab,var(--pad) 75%,transparent);
 }
 .stepgrid__cell.is-hit::after{
   background:var(--led-white);
-  box-shadow:0 0 10px color-mix(in oklab,var(--led-white) 85%,transparent);
+  opacity:calc(.35 + .65 * var(--hit-vel, .7));
+  box-shadow:0 0 calc(4px + 8px * var(--hit-vel, .7))
+    color-mix(in oklab,var(--led-white) 85%,transparent);
+}
+/* a TIE step holds the previous note: a ring, not another strike */
+.stepgrid__cell.is-sustain{
+  border-color:color-mix(in oklab,var(--pad) 55%,transparent);
+}
+.stepgrid__cell.is-sustain::after{
+  background:transparent;
+  border:2px solid color-mix(in oklab,var(--pad) 60%,transparent);
+  box-shadow:none;
 }
 /* an armed edit-row target owns the pads: the note dims, the flag lights */
 .stepgrid__line[data-edit="1"] .stepgrid__cell[data-on="1"]::after{opacity:.4}
