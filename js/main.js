@@ -420,6 +420,32 @@ if ('IntersectionObserver' in window) {
     'SKA', 'DISCO', 'REGGAE'];
   const DRUM_VARS = ['off', 'fill4', 'fill8'];
   const DRUM_LINES = ['A', 'B', 'OFF'];
+  // Drum.cpp's kGenre, verbatim: eighteen styles, the four lanes in the card's
+  // own voice order (KICK, SNARE, HAT, PERC), two authored 16-step lines each.
+  // '-' is a rest, 'a'..'g' a hit and 'A'..'G' a ghost that FILL% rolls.  The
+  // device's kit puts several notes on one lane (clap and claves on the snare
+  // lane, congas and toms on perc), so a lane's letters all land on that lane's
+  // voice here instead of opening extra lines.
+  const DRUM_TABLE = [
+    [["a---a---a---a---","a---a---a-a-a-a-"], ["----a-------a---","----a---a-a-a---"], ["--b---b---b---b-","aAaAaAaAaAaAaAaA"], ["c-a---a---a---a-","ca-d--a--d-a--a-"]],
+    [["a---a---a---a---","a---a---a-a---a-"], ["----a-------a---","----a---a-a-a---"], ["--b---b---b---b-","AaAaAaAaAaAaAaAa"], ["c--e-------f----","c-g---a---g---a-"]],
+    [["a-----a---a-----","a--a--a---a--a--"], ["----a-------a---","----a-----a-a--a"], ["aAaAaAaAaAaAaAaA","--b---b---b---b-"], ["c---e---f---e---","--a-d--a--d-a---"]],
+    [["a-----a-a-------","a--a--a---a--a--"], ["----a-------a---","----a--Aa-a-a--A"], ["aAaAaAaAaAaAaAaA","--b---b---b---b-"], ["c-------d---a---","---a--d----a--d-"]],
+    [["a-----a---a--a--","a---a---a-a---a-"], ["----a-------a---","----a--a---a--a-"], ["aaaaaaaaaaaaaaaa","aAaAaAaAaAaAaAaA"], ["c--g----g---g---","--a-a--a--a-A--A"]],
+    [["a-----a---a--a--","a--a-a----a-a---"], ["----a-------a---","----a--a-a--a-A-"], ["aAaAaAaAaAaAaAaA","aa-aa-aa-aa-aa--"], ["c-e---f---e---f-","--a-d--a--a-d--a"]],
+    [["a-----a---a--a--","a--a--a---a-a-a-"], ["----a-------a---","----a--a-a--a--a"], ["aAaAaAaAaAaAaAaA","--b---b---b---b-"], ["c--d--a---d--a--","---a--d-a---a-d-"]],
+    [["a-----a---a-----","a-----a---a--a-a"], ["----a-------a---","----a----a--a-a-"], ["aAaAaAaAaAaAaAaA","--b---b---b---b-"], ["c-----g-----g---","c--e--f--e--f---"]],
+    [["a-------a-------","a------aa--a----"], ["---a-----a--A---","---a--a---a--a--"], ["a-A-a--aa-A-a--a","a-a-a-aa-a-a-a-a"], ["c-------e---f---","----e--f---e--f-"]],
+    [["a--a--a---a--a--","a--a--a---a-a-a-"], ["c--c--c---c-c---","----b-------b---"], ["aAaAaAaAaAaAaAaA","--b---b---b---b-"], ["c--d--a---d--a--","--a-a--d--a-a--d"]],
+    [["a-----a---a--a--","a--a--a---a-a---"], ["----a-------a---","----a-----a---a-"], ["aAaAaAaAaAaAaAaA","--b---b---b---b-"], ["c-a--d-a--a--d-a","--a-a--d--a-a--d"]],
+    [["a-----a---a-----","a--a--a-a-a-----"], ["----b-------b---","----b--b---b--b-"], ["aAaAaAaAaAaAaAaA","--b---b---b---b-"], ["c------g---g----","--g--g---g--g---"]],
+    [["a---------a-----","a--a------a--a--"], ["----a-------a---","----a--a---a--a-"], ["a-a-a-a-a-a-a-a-","AaAaAaAaAaAaAaAa"], ["c----------e--f-","--------e--f--e-"]],
+    [["a---------a-----","a-----a---a---a-"], ["----a-------a---","----a--a----a--a"], ["a--aa--aa--aa--a","a-a-a-a-a-a-a-a-"], ["c---a---d---a---","--a--d-a--a--d-a"]],
+    [["a-------a-------","a-----a-a-----a-"], ["----a-------a---","----a--a----a--a"], ["a-a-a-a-a-a-a-a-","AaAaAaAaAaAaAaAa"], ["c-----e-----f---","----e--f----e--f"]],
+    [["a-------a-------","a---a---a---a---"], ["----a-------a---","----a---a---a-a-"], ["--a---a---a---a-","--b---b---b---b-"], ["c-g---g---g---g-","c-a-a--a-a--a-a-"]],
+    [["a---a---a---a---","a---a---a-a-a-a-"], ["----b-------b---","----b---b---b--b"], ["--b---b---b---b-","aAaAaAaAaAaAaAaA"], ["c--a---a---a---a","---a-d-a---a-d-a"]],
+    [["--------a-------","------a-a-----a-"], ["--------a-------","----c-------c---"], ["--a---a---a---a-","a-a-a-a-a-a-a-a-"], ["c-----g-----g---","--a-a--a--a-a--a"]],
+  ];
   const pctOf = v => v + '%';
   const PAGE_ROWS = {
     gen: [
@@ -640,6 +666,63 @@ if ('IntersectionObserver' in window) {
     for (let s = 0; s < STEPS_MAX; s++) if (s % 4 === 0) voice0[s] = true;
   }
 
+  // --- DRUM PATTERN (Drum.cpp drumProduce) --------------------------------
+  // One rolled 16-step cell: a lowercase hit always plays, FILL% rolls the
+  // uppercase ghosts, MOT% rolls an accent onto each hit that landed, and VAR
+  // opens the bar-end fill - a snare through the last beat or half bar, and the
+  // two tom cells at 14 and 15.  The cell is rolled once and stamped over the
+  // track's length, so a longer pattern keeps one bar instead of re-rolling.
+  function drumCell(i) {
+    const p = TRACKS[i].page;
+    const genre = clamp(p.genre, 0, DRUM_TABLE.length - 1);
+    const fill = clamp(p.fill, 0, 100);
+    const mot = clamp(p.mot, 0, 100);
+    const vStart = p.var === 2 ? 8 : p.var === 1 ? 12 : 16;   // fill8 / fill4 / off
+    const cell = Array.from({ length: 16 }, () => ({ hits: [], acc: [] }));
+    for (let c = 0; c < 16; c++) {
+      for (let l = 0; l < 4; l++) {
+        const line = p.lines[l];
+        if (line > 1) continue;                               // lane OFF
+        const str = DRUM_TABLE[genre][l][line];
+        if (c >= str.length) continue;                        // short line
+        const ch = str[c];
+        if (ch === '-') continue;
+        if (ch >= 'A' && ch <= 'Z' && chordRand() * 100 >= fill) continue;
+        cell[c].hits.push(l);
+        if (chordRand() * 100 < mot) cell[c].acc.push(l);
+      }
+      // the bar-end fill rolls whether or not the lane's line has a hit there
+      if (c >= vStart) {
+        if (p.lines[1] < 2 && chordRand() * 100 < fill) {
+          cell[c].hits.push(1);
+          if (chordRand() * 100 < mot) cell[c].acc.push(1);
+        }
+        // the tom run lands on the perc lane - the kit's A#1 / G#1 are its notes
+        if (c >= 14 && p.lines[3] < 2 && chordRand() * 100 < fill) cell[c].hits.push(3);
+      }
+    }
+    return cell;
+  }
+
+  // write it onto the DRUM track: notes per lane, and MOT's accents as each
+  // step's ACCENT bit - the same flag the M1 row edits and the transport reads
+  function drumProduce(i, reseed) {
+    const t = TRACKS[i];
+    if (!t || t.type !== 'DRUM') return 0;
+    if (reseed) chordRoll = (Date.now() & 0x7fffffff) || 1;   // M3 rolls fresh
+    const len = lenOf(t);
+    const cell = drumCell(i);
+    for (let s = 0; s < len; s++) {
+      const c = cell[s % 16];
+      for (let l = 0; l < 4; l++) {
+        state[i][l][s] = c.hits.indexOf(l) >= 0;
+        if (c.acc.indexOf(l) >= 0) attrs[i][l][s] |= ATTR_BIT[3];
+        else attrs[i][l][s] &= ~ATTR_BIT[3];
+      }
+    }
+    return len;
+  }
+
   // the four slots of CH 2's bar, as the card shows them on the track line
   function chordLine() {
     const names = [0, 1, 2, 3].map(i => chordName(1, i * 4)).filter(Boolean);
@@ -795,6 +878,8 @@ if ('IntersectionObserver' in window) {
         const row = (PAGE_ROWS[pageOf(t)] || [])[i];
         if (!row || row.idle) return;
         row.set(t, clamp(row.get(t) + steps, row.min, row.max));
+        // every knob on the drum page rebuilds the pattern live
+        if (pageOf(t) === 'drum') { drumProduce(current); paint(); }
         updateScreen();
         refreshKnobs();
         return;
@@ -1077,16 +1162,19 @@ if ('IntersectionObserver' in window) {
   stepSetting(keyRoot, 'root', ROOTS);
 
   if (gridCard) gridCard.dataset.mode = mode;
-  // M3 is the firmware's generate: it re-rolls the progression by hand
+  // M3 is the firmware's generate: on a DRUM track it re-rolls the pattern's
+  // ghosts, accents and bar-end fill, everywhere else it re-rolls CH 2's chords
   const genPad = document.getElementById('genPad');
   if (genPad) {
     genPad.addEventListener('click', () => {
       pinned = true;
-      generateProgression(true);
+      if (TRACKS[current].type === 'DRUM') drumProduce(current, true);
+      else generateProgression(true);
       paint();
     });
   }
   generateProgression();
+  drumProduce(0);          // the page's knobs and CH 1's line agree from the off
   selectTrack(0, 0);
 
   // show the "swipe" hint only when the pads overflow their card
