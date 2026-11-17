@@ -151,6 +151,21 @@ if ('IntersectionObserver' in window) {
     return ext.map(o => noteMidi(t, d + o));
   }
   const voicingNames = (t, d) => voicingMidi(t, d).map(noteName);
+  // The GEN window a BASS/LEAD note folds into (Gen.cpp, Keyboard.cpp): LOW is
+  // C0/C1/C2 = MIDI 24/36/48 and RANGE is 1..5 octaves, so the window is
+  // [24+12*low, that+12*range-1].  foldWin walks a pitch in by whole octaves,
+  // which is why a stored line and its window never rewrite each other
+  const LOW_NAMES = ['C0', 'C1', 'C2'];
+  const foldWin = (v, lo, hi) => {
+    if (hi < lo) hi = lo;
+    while (v > hi) v -= 12;
+    while (v < lo) v += 12;
+    return clamp(v, 0, 127);
+  };
+  const winOfTrack = t => {
+    const lo = 24 + 12 * t.row.low;
+    return [lo, Math.min(127, lo + 12 * t.row.range - 1)];
+  };
 
   const panelKeys = [...document.querySelectorAll('#stepgrid .panel__key[data-note]')];
   const stepEditArm = document.getElementById('stepEditArm');
@@ -191,6 +206,8 @@ if ('IntersectionObserver' in window) {
   TRACKS.forEach(t => {
     t.row = {
       len: 16, follow: 0, speed: 2, inch: t.ch, track: t.ch,
+      // GEN window: LOW C1 and 2 octaves, the boot values (Gen.cpp)
+      low: 1, range: 2,
       swing: 0, amt: 50,
       genre: 0, mood: 50, tens: 50, motion: 50, cad: 0, cpx: 50, phrase: 0, surp: 50
     };
@@ -242,7 +259,7 @@ if ('IntersectionObserver' in window) {
   // MONO track type (SeqClock.h seqMonoTypeName): ROOT plays the incoming
   // chord's root, STRUM rakes the whole chord, BASS/ARP/LEAD shape it through
   // the GEN window, the ARP page and the LEAD params
-  const MONO_ROOT = 0, MONO_STRUM = 3;
+  const MONO_ROOT = 0, MONO_BASS = 1, MONO_STRUM = 3, MONO_LEAD = 4;
   const MONO_TYPE_NAMES = ['ROOT', 'BASS', 'ARP', 'STRUM', 'LEAD'];
   const monoType = TRACKS.map(() => MONO_ROOT);
   // a HAND step's performed gesture: the note and the ms it was struck at, in
@@ -362,13 +379,19 @@ if ('IntersectionObserver' in window) {
       const src = TRACKS.findIndex(x => x.ch === t.row.inch);
       const d = src >= 0 ? chordsOf[src][posOf[src]] : -1;
       const midi = d >= 0 ? voicingMidi(t, d) : [];
-      if (monoType[i] === MONO_STRUM && midi.length > 1) {
+      const mt = monoType[i];
+      if (mt === MONO_STRUM && midi.length > 1) {
         const gap = Math.min(40, Math.max(8, durMs / (midi.length * 2)));
         ev.notes = midi.slice().sort((a, b) => a - b).map((m, k) => ({ m, at: Math.round(k * gap) }));
         ev.strumGap = Math.round(gap);
         ev.cut = true;                       // each note cuts the one before
       } else if (midi.length) {
-        ev.notes = [{ m: midi[0], at: 0 }];
+        // BASS and LEAD take the chord's lowest note and fold it into the
+        // track's GEN window; ROOT keeps the root, ARP the card's fallback
+        const pick = mt === MONO_BASS || mt === MONO_LEAD
+          ? foldWin(Math.min(...midi), ...winOfTrack(t))
+          : midi[0];
+        ev.notes = [{ m: pick, at: 0 }];
       }
     }
     // POLY: the step's type decides how the chord is voiced.  STEP is the
@@ -413,7 +436,7 @@ if ('IntersectionObserver' in window) {
   };
   let retimeWalk = null;
   let editTarget = 0;                                  // 0 = STEPS, else 1..8 target
-  let pageOpen = false;                                // the M2 page of this track
+  let pageIdx = -1;                                    // open page of this track, -1 none
   const variant = { enc: 1, seq: 1, key: 1 };          // ENC/SEQ/KEY 1..4
   const clock = { bpm: 120 };                          // SEQMODE3's BPM is global
   const tabs = [];
@@ -468,7 +491,7 @@ if ('IntersectionObserver' in window) {
 
   function applyMode(m) {
     mode = m;
-    pageOpen = false;      // the page only lives on the sequencer screen
+    pageIdx = -1;          // the page only lives on the sequencer screen
     if (gridCard) gridCard.dataset.mode = m;
     // the display shows the page that belongs to the mode and variant: dials
     // in ENC (one CC bank each), the keyboard screen in KEY 1, the sequencer
@@ -614,6 +637,27 @@ if ('IntersectionObserver' in window) {
       { label: 'TES%', min: 0, max: 100, get: t => t.page.tesr, set: (t, v) => { t.page.tesr = v; }, fmt: pctOf },
       { label: 'NOT%', min: 0, max: 100, get: t => t.page.notr, set: (t, v) => { t.page.notr = v; }, fmt: pctOf }
     ],
+    // BASS page, F1 = the FULL options row: ENC1 TONES, ENC2 RANGE, ENC3 LOW,
+    // ENC4 ALGO (Events.cpp).  RANGE and LOW are the ones the card carries
+    genopts: [
+      { label: 'TONES', dash: true },
+      { label: 'RANGE', min: 1, max: 5, get: t => t.row.range, set: (t, v) => { t.row.range = v; }, fmt: v => v + ' oct' },
+      { label: 'LOW', min: 0, max: 2, get: t => t.row.low, set: (t, v) => { t.row.low = v; }, fmt: v => LOW_NAMES[v] },
+      { label: 'ALGO', dash: true },
+      { label: '—', idle: true }, { label: '—', idle: true },
+      { label: '—', idle: true }, { label: '—', idle: true }
+    ],
+    // M2 LEAD page: ENC2 CONTOUR, ENC3 LOW, ENC4 RANGE, ENC5 CT, ENC6 GD,
+    // ENC7 density (Events.cpp).  LOW and RANGE share the BASS slots
+    lead: [
+      { label: 'CONTOUR', dash: true },
+      { label: 'LOW', min: 0, max: 2, get: t => t.row.low, set: (t, v) => { t.row.low = v; }, fmt: v => LOW_NAMES[v] },
+      { label: 'RANGE', min: 1, max: 5, get: t => t.row.range, set: (t, v) => { t.row.range = v; }, fmt: v => v + ' oct' },
+      { label: 'CT', dash: true },
+      { label: 'GD', dash: true },
+      { label: 'DENS', dash: true },
+      { label: '—', idle: true }, { label: '—', idle: true }
+    ],
     drum: [
       { label: 'GENRE', min: 0, max: DRUM_GENRES.length - 1, get: t => t.page.genre, set: (t, v) => { t.page.genre = v; }, fmt: v => DRUM_GENRES[v] },
       { label: 'VAR', min: 0, max: 2, get: t => t.page.var, set: (t, v) => { t.page.var = v; }, fmt: v => DRUM_VARS[v] },
@@ -627,11 +671,20 @@ if ('IntersectionObserver' in window) {
       }))
     ]
   };
-  const PAGE_HEAD = { drum: 'DRUM PATTERN', gen: 'GENERATOR' };
-  const pageOf = t => t.type === 'DRUM' ? 'drum'
-    : t.type === 'MONO' ? 'gen'
-    : t.name === 'SKANK' ? 'skank'
-    : t.name === 'CHORDS' ? 'comp' : null;
+  const PAGE_HEAD = { drum: 'DRUM PATTERN', gen: 'GENERATOR',
+    genopts: 'BASS OPTIONS', lead: 'LEAD' };
+  // a track owns an ordered page list: M2 opens the first, M2 again walks on.
+  // A BASS track carries the BASS page and its options page, a LEAD track the
+  // LEAD page beside the shared generator row, the others their single page
+  const pagesOf = t => {
+    if (t.type === 'DRUM') return ['drum'];
+    if (t.type === 'MONO') {
+      const mt = monoType[TRACKS.indexOf(t)];
+      return mt === MONO_LEAD ? ['gen', 'lead'] : mt === MONO_BASS ? ['gen', 'genopts'] : ['gen'];
+    }
+    return t.name === 'SKANK' ? ['skank'] : t.name === 'CHORDS' ? ['comp'] : [];
+  };
+  const pageOf = t => (pageIdx >= 0 ? (pagesOf(t)[pageIdx] || null) : null);
 
   // the higher variants' rows, in the firmware's own label order (Bindings.cpp
   // encLabels): SEQMODE3 = OCT LEN FOLLOW SPEED INCH TRACK TYPE BPM, SEQMODE4 =
@@ -942,9 +995,9 @@ if ('IntersectionObserver' in window) {
       if (k === 'root') return paramPos(t.root, 0, ROOTS.length - 1);
       return 0;
     }
-    if (pageOpen) {
+    if (pageIdx >= 0) {
       const row = (PAGE_ROWS[pageOf(t)] || [])[i];
-      if (!row || row.idle) return 0;
+      if (!row || row.idle || !row.get) return 0;
       return paramPos(row.get(t), row.min, row.max);
     }
     const spec = SEQ_KNOBS[i];
@@ -1000,9 +1053,12 @@ if ('IntersectionObserver' in window) {
     pagePad.addEventListener('click', () => {
       // SEQMODE3 is the pattern-setup screen and carries no page on the device
       if (mode === 'seq' && variant.seq === 3) return;
-      if (!pageOf(TRACKS[current])) return;      // this track carries no page
-      pageOpen = !pageOpen;
-      if (pageOpen && stepEdit) {
+      const pages = pagesOf(TRACKS[current]);
+      if (!pages.length) return;                 // this track carries no page
+      // M2 walks the track's pages: first press opens, the next moves on, the
+      // one after the last closes it again
+      pageIdx = pageIdx >= pages.length - 1 ? -1 : pageIdx + 1;
+      if (pageIdx >= 0 && stepEdit) {
         stepEdit = false;
         stepEditArm.setAttribute('aria-pressed', 'false');
       }
@@ -1075,10 +1131,10 @@ if ('IntersectionObserver' in window) {
       else if (k === 'root') t.root = (t.root + steps + ROOTS.length) % ROOTS.length;
       else return;
     } else {
-      if (pageOpen) {
+      if (pageIdx >= 0) {
         // the open page owns the row: TIE% moves in 1s, HITS in whole stabs
         const row = (PAGE_ROWS[pageOf(t)] || [])[i];
-        if (!row || row.idle) return;
+        if (!row || row.idle || !row.get || !row.set) return;
         row.set(t, clamp(row.get(t) + steps, row.min, row.max));
         // every knob on the drum page rebuilds the pattern live
         if (pageOf(t) === 'drum') { drumProduce(current); paint(); }
@@ -1186,7 +1242,7 @@ if ('IntersectionObserver' in window) {
   function selectTrack(i, v) {
     current = i;
     voice = v || 0;
-    pageOpen = false;      // the page belongs to the track, so it dies with it
+    pageIdx = -1;          // the page belongs to the track, so it dies with it
     renderVoices();
     buildLine();
     tabs.forEach((b, n) => {
@@ -1202,7 +1258,7 @@ if ('IntersectionObserver' in window) {
     const v = voicesOf(t)[voice];
     if (scr.head) scr.head.textContent = 'CH ' + t.ch + ' ' + t.type + ' · ' + v.name;
     // an armed attribute target takes the header's left slot, as on the panel
-    const page = pageOpen ? pageOf(t) : null;
+    const page = pageOf(t);
     if (scr.headLeft) {
       const shown = stepEdit && editTarget && targetAllowed(editTarget, t);
       // with TYPE armed the row says what a step left on INHERIT falls back to,
@@ -1256,9 +1312,11 @@ if ('IntersectionObserver' in window) {
     seqCells.forEach((cell, i) => {
       const row = rows ? rows[i] : null;
       if (cell.b) cell.b.textContent = row ? row.label : baseLabels[i];
-      if (row && !row.idle && cell.s) {
+      if (row && !row.idle && row.get && cell.s) {
         const val = row.get(t);
         cell.s.textContent = row.fmt ? row.fmt(val) : String(val);
+      } else if (row && cell.s) {
+        cell.s.textContent = '—';          // a cell the card carries as a name only
       }
     });
     if (pageLegend) pageLegend.classList.toggle('is-on', page !== null);
