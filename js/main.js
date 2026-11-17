@@ -199,6 +199,9 @@ if ('IntersectionObserver' in window) {
   // except CH 3: the skank is the one track wired to listen, and INCH is the
   // knob that says so
   TRACKS[2].row.inch = 2;
+  // CH 4 listens to the chords for the same reason: a MONO track's note comes
+  // from the chord its input channel carries
+  TRACKS[3].row.inch = 2;
   // a pattern runs to 64 steps, because SEQMODE3's LEN is 0..64.  The 16-pad
   // line is the bar window over it (the firmware's C D E F window, driven by
   // the clock here), and a track longer than its 16-step string repeats it
@@ -236,6 +239,12 @@ if ('IntersectionObserver' in window) {
   // track (Keyboard.cpp effStepType), which boots on STEP like the device
   const POLY_STEP = 0, POLY_STRUM = 1, POLY_HAND = 2;
   const polyType = TRACKS.map(() => POLY_STEP);
+  // MONO track type (SeqClock.h seqMonoTypeName): ROOT plays the incoming
+  // chord's root, STRUM rakes the whole chord, BASS/ARP/LEAD shape it through
+  // the GEN window, the ARP page and the LEAD params
+  const MONO_ROOT = 0, MONO_STRUM = 3;
+  const MONO_TYPE_NAMES = ['ROOT', 'BASS', 'ARP', 'STRUM', 'LEAD'];
+  const monoType = TRACKS.map(() => MONO_ROOT);
   // a HAND step's performed gesture: the note and the ms it was struck at, in
   // the order the player struck it (stepStrumDt + Keyboard.cpp's literal replay)
   const handGest = TRACKS.map(t => voicesOf(t).map(() =>
@@ -343,6 +352,25 @@ if ('IntersectionObserver' in window) {
       lenMs: (durMs * gate) / hits,
       hits,
     };
+    // MONO: the track's type picks the note out of the incoming chord - the
+    // chord its input channel carries (INCH).  ROOT takes the root, STRUM rakes
+    // the whole chord with each note cutting the last (Keyboard.cpp's
+    // SEQ_MONO_STRUM path); BASS, ARP and LEAD reshape it through the GEN
+    // window, the ARP page and the LEAD params, which the card does not carry,
+    // so they keep the root note
+    if (t.type === 'MONO') {
+      const src = TRACKS.findIndex(x => x.ch === t.row.inch);
+      const d = src >= 0 ? chordsOf[src][posOf[src]] : -1;
+      const midi = d >= 0 ? voicingMidi(t, d) : [];
+      if (monoType[i] === MONO_STRUM && midi.length > 1) {
+        const gap = Math.min(40, Math.max(8, durMs / (midi.length * 2)));
+        ev.notes = midi.slice().sort((a, b) => a - b).map((m, k) => ({ m, at: Math.round(k * gap) }));
+        ev.strumGap = Math.round(gap);
+        ev.cut = true;                       // each note cuts the one before
+      } else if (midi.length) {
+        ev.notes = [{ m: midi[0], at: 0 }];
+      }
+    }
     // POLY: the step's type decides how the chord is voiced.  STEP is the
     // block it always was; STRUM rakes it; HAND hands it to the player
     if (t.type === 'POLY') {
@@ -639,15 +667,23 @@ if ('IntersectionObserver' in window) {
       { label: 'SPEED', min: 0, max: SPEEDS.length - 1, get: t => t.row.speed, set: (t, v) => { t.row.speed = v; }, fmt: v => SPEEDS[v] },
       { label: 'INCH', min: 1, max: 16, get: t => t.row.inch, set: (t, v) => { t.row.inch = v; }, fmt: v => 'CH ' + v },
       { label: 'TRACK', min: 1, max: 16, get: t => t.row.track, set: (t, v) => { t.row.track = v; }, fmt: v => 'CH ' + v },
-      // SEQMODE3's ENC7 is TYPE: on a POLY track it is the track's own POLY
-      // type (Display.cpp seqPolyTypeName, seqPolyTypeAdjust), which every step
-      // left on INHERIT falls back to.  MONO's own type list and the whole-track
-      // HARM/SKANK types are not modelled, so those tracks keep the track kind
-      { label: 'TYPE', min: 0, max: POLY_TYPE_NAMES.length - 1,
-        ro: t => t.type !== 'POLY',
-        get: t => (t.type === 'POLY' ? polyType[TRACKS.indexOf(t)] : TRACK_TYPES.indexOf(t.type)),
-        set: (t, v) => { polyType[TRACKS.indexOf(t)] = v; },
-        fmt: (v, t) => (t.type === 'POLY' ? POLY_TYPE_NAMES[v] : TRACK_TYPES[v]) },
+      // SEQMODE3's ENC7 is TYPE (Display.cpp): a POLY track shows its POLY
+      // type (seqPolyTypeName, seqPolyTypeAdjust), a MONO track its MONO type
+      // (seqMonoTypeName, seqMonoTypeAdjust) - both no wrap.  A DRUM track has
+      // no type list, so it keeps the track kind.  The whole-track POLY HARM
+      // and SKANK types are not modelled either
+      { label: 'TYPE', min: 0,
+        max: t => (t.type === 'MONO' ? MONO_TYPE_NAMES.length - 1 : POLY_TYPE_NAMES.length - 1),
+        ro: t => t.type === 'DRUM',
+        get: t => (t.type === 'MONO' ? monoType[TRACKS.indexOf(t)]
+          : t.type === 'POLY' ? polyType[TRACKS.indexOf(t)] : TRACK_TYPES.indexOf(t.type)),
+        set: (t, v) => {
+          const i = TRACKS.indexOf(t);
+          if (t.type === 'MONO') monoType[i] = clamp(v, 0, MONO_TYPE_NAMES.length - 1);
+          else if (t.type === 'POLY') polyType[i] = clamp(v, 0, POLY_TYPE_NAMES.length - 1);
+        },
+        fmt: (v, t) => (t.type === 'MONO' ? MONO_TYPE_NAMES[clamp(v, 0, 4)]
+          : t.type === 'POLY' ? POLY_TYPE_NAMES[clamp(v, 0, 2)] : TRACK_TYPES[clamp(v, 0, 2)]) },
       { label: 'BPM', min: 20, max: 300, get: () => clock.bpm, set: (t, v) => { clock.bpm = v; } }
     ],
     seq4: [
@@ -887,6 +923,8 @@ if ('IntersectionObserver' in window) {
   }
 
   const paramPos = (v, min, max) => clamp(Math.round(((v - min) / (max - min)) * 127), 0, 127);
+  // a spec cell's bound can depend on the track (TYPE carries two lists)
+  const specVal = (v, t) => (typeof v === 'function' ? v(t) : v);
 
   function knobPos(i) {
     const t = TRACKS[current];
@@ -895,7 +933,7 @@ if ('IntersectionObserver' in window) {
     if (rk) {
       const sp = (ROW_SPECS[rk] || [])[i];
       if (!sp || sp.dash) return 0;
-      return paramPos(sp.get(t), sp.min, sp.max);
+      return paramPos(sp.get(t), specVal(sp.min, t), specVal(sp.max, t));
     }
     if (mode === 'key') {
       const k = KEY_KNOBS[i];
@@ -1021,7 +1059,7 @@ if ('IntersectionObserver' in window) {
       if (!sp || sp.dash || (typeof sp.ro === 'function' ? sp.ro(t) : sp.ro) || !sp.set) return;
       const wasFollow = t.row.follow;
       const wasInch = t.row.inch;
-      sp.set(t, clamp(sp.get(t) + steps, sp.min, sp.max));
+      sp.set(t, clamp(sp.get(t) + steps, specVal(sp.min, t), specVal(sp.max, t)));
       // a new mode or a new feeder re-captures a FREEZE latch
       if (rk === 'seq3' && (t.row.follow !== wasFollow || t.row.inch !== wasInch)) syncFollow();
       updateScreen();
@@ -1261,8 +1299,11 @@ if ('IntersectionObserver' in window) {
       const notes = current === 1 ? chordNotes(1, n) : [];
       const say = [];
       if (notes.length) say.push(notes.join(' '));
-      if (ev && ev.notes) say.push((ev.strumGap ? 'strum ' : 'hand ') +
-        ev.notes.map(n => n.at).join('·') + ' ms');
+      if (ev && ev.notes) {
+        say.push(ev.notes.map(n => noteName(n.m)).join(' '));
+        if (ev.strumGap || ev.handMs !== undefined)
+          say.push((ev.strumGap ? 'strum ' : 'hand ') + ev.notes.map(n => n.at).join('·') + ' ms');
+      }
       if (ev && ev.buffered) say.push('HAND buffered - play the white keys');
       if (ev && (ev.strike || ev.held)) say.push('vel ' + ev.vel);
       if (ev && ev.strike) say.push(Math.round(ev.lenMs) + ' ms');
