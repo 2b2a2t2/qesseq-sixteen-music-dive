@@ -179,7 +179,7 @@ if ('IntersectionObserver' in window) {
     { ch: 3, type: 'POLY', name: 'SKANK',  scale: 5, root: 2, oct: 4, listen: 'CHORD', play: 'GATE', overdub: 'OFF',
       gate: 100, vel: 90, acc: 101, prob: 100,
       page: { tes: 0, mot: 50, shp: 0, thn: 0, ext: 0, sub: 0, tesr: 0, notr: 0 },
-      color: 'var(--led-green)', follow: 'CH 2', pattern: '..x.x..x..x.x..x' },
+      color: 'var(--led-green)', pattern: '..x.x..x..x.x..x' },
     { ch: 4, type: 'MONO', name: 'BASS',   scale: 2, root: 9, oct: 2, listen: 'CHORD', play: 'GATE', overdub: 'OFF',
       gate: 100, vel: 90, acc: 101, prob: 100,
       page: { fill: 50, acc: 30, glide: 20, tie: 10 },
@@ -190,11 +190,15 @@ if ('IntersectionObserver' in window) {
   // the row the higher variants show, per track (SEQMODE3/4, KEYMODE2/3/4)
   TRACKS.forEach(t => {
     t.row = {
-      len: 16, follow: 0, speed: 2, inch: 0, track: t.ch,
+      len: 16, follow: 0, speed: 2, inch: t.ch, track: t.ch,
       swing: 0, amt: 50,
       genre: 0, mood: 50, tens: 50, motion: 50, cad: 0, cpx: 50, phrase: 0, surp: 50
     };
   });
+  // INCH seeds to the track's own channel (boot state, so no track follows),
+  // except CH 3: the skank is the one track wired to listen, and INCH is the
+  // knob that says so
+  TRACKS[2].row.inch = 2;
   // a pattern runs to 64 steps, because SEQMODE3's LEN is 0..64.  The 16-pad
   // line is the bar window over it (the firmware's C D E F window, driven by
   // the clock here), and a track longer than its 16-step string repeats it
@@ -221,19 +225,24 @@ if ('IntersectionObserver' in window) {
   // AMT scales each toward 50 = straight, which is what seqSwingRatioOf reports
   const SWING_DEPTH = [50, 75, 70, 72, 62, 66, 64, 75, 67];
 
-  // A follower reads its feeder's playhead.  ON takes the chord the feeder is
+  // A follower reads its feeder's playhead: the feeder is the track of the
+  // channel INCH points at, which the device seeds with the track's own channel
+  // ("1-based, self unless remapped", Keyboard.cpp seqInCh).  Keyboard.cpp's
+  // rule is the whole model: follow needs mode != 0, a track that is not DRUM,
+  // and an input channel that is not itself.  ON takes the chord the feeder is
   // sounding and holds it through the feeder's rests; FREEZE latches the chord
   // it hears when it is entered, so the follower keeps stepping on a frozen
-  // chord (SeqClock.cpp followOn: 0 OFF, 1 ON, 2 FREEZE - and boot is OFF, so
-  // the arrow only shows once the knob is turned)
+  // chord (followOn: 0 OFF, 1 ON, 2 FREEZE, boot OFF)
   const posOf = TRACKS.map(() => 0);
-  const followOn = t => !!t.follow && t.row.follow !== 0;
-  const followFrozen = t => !!t.follow && t.row.follow === 2;
-  const feederOf = t => TRACKS.find(x => 'CH ' + x.ch === t.follow) || null;
   const feederIdxOf = i => {
-    const f = feederOf(TRACKS[i]);
-    return f ? TRACKS.indexOf(f) : -1;
+    const t = TRACKS[i];
+    if (t.row.follow === 0 || t.type === 'DRUM') return -1;   // no mode / never a drum
+    if (t.row.inch === t.ch) return -1;                       // INCH on itself
+    const feeder = TRACKS.findIndex(x => x.ch === t.row.inch);
+    return feeder;                                            // -1: not a track here
   };
+  const followOn = t => feederIdxOf(TRACKS.indexOf(t)) >= 0;
+  const followFrozen = t => followOn(t) && t.row.follow === 2;
   // What the transport does with a step is what the M1 flags are for: TIE holds
   // the previous note instead of re-striking, ACCENT takes the track's accent
   // velocity, GLIDE slides in from the last pitch, PROBABILITY can drop the
@@ -528,7 +537,7 @@ if ('IntersectionObserver' in window) {
       { label: 'LEN', min: 1, max: 64, get: t => t.row.len, set: (t, v) => { t.row.len = v; } },
       { label: 'FOLLOW', min: 0, max: 2, get: t => t.row.follow, set: (t, v) => { t.row.follow = v; }, fmt: v => FOLLOW_NAMES[v] },
       { label: 'SPEED', min: 0, max: SPEEDS.length - 1, get: t => t.row.speed, set: (t, v) => { t.row.speed = v; }, fmt: v => SPEEDS[v] },
-      { label: 'INCH', min: 0, max: 16, get: t => t.row.inch, set: (t, v) => { t.row.inch = v; }, fmt: v => (v ? 'CH ' + v : 'OFF') },
+      { label: 'INCH', min: 1, max: 16, get: t => t.row.inch, set: (t, v) => { t.row.inch = v; }, fmt: v => 'CH ' + v },
       { label: 'TRACK', min: 1, max: 16, get: t => t.row.track, set: (t, v) => { t.row.track = v; }, fmt: v => 'CH ' + v },
       { label: 'TYPE', min: 0, max: 2, ro: true, get: t => TRACK_TYPES.indexOf(t.type), fmt: v => TRACK_TYPES[v] },
       { label: 'BPM', min: 20, max: 300, get: () => clock.bpm, set: (t, v) => { clock.bpm = v; } }
@@ -871,8 +880,10 @@ if ('IntersectionObserver' in window) {
       const sp = (ROW_SPECS[rk] || [])[i];
       if (!sp || sp.dash || sp.ro || !sp.set) return;
       const wasFollow = t.row.follow;
+      const wasInch = t.row.inch;
       sp.set(t, clamp(sp.get(t) + steps, sp.min, sp.max));
-      if (rk === 'seq3' && t.row.follow !== wasFollow) syncFollow();   // FREEZE latches here
+      // a new mode or a new feeder re-captures a FREEZE latch
+      if (rk === 'seq3' && (t.row.follow !== wasFollow || t.row.inch !== wasInch)) syncFollow();
       updateScreen();
       refreshKnobs();
       if (retimeWalk) retimeWalk();       // LEN/SPEED/BPM move the clock itself
@@ -1128,15 +1139,15 @@ if ('IntersectionObserver' in window) {
       tab.classList.toggle('is-hit', trackStrikes(i));
       // the tab names its feeder only while FOLLOW is running
       const small = tab.querySelector('small');
-      if (small) small.textContent = tab_t.type + (followOn(tab_t) ? ' ← ' + tab_t.follow : '');
+      if (small) small.textContent = tab_t.type + (followOn(tab_t) ? ' ← CH ' + tab_t.row.inch : '');
       tab.setAttribute('aria-label', 'Channel ' + tab_t.ch + ' — ' + tab_t.type + ' track' +
-        (followOn(tab_t) ? ', following ' + tab_t.follow : ''));
+        (followOn(tab_t) ? ', following CH ' + tab_t.row.inch : ''));
     });
     counter.textContent = String(pos + 1).padStart(2, '0') + ' / ' +
       String(len).padStart(2, '0');
     if (speedOut) speedOut.textContent = SPEEDS[clamp(t.row.speed, 0, SPEEDS.length - 1)];
     const label = 'CH ' + t.ch + ' · ' + t.type + ' · ' + v.name +
-      (followOn(t) ? ' ← ' + t.follow : '');      // the arrow is a running claim
+      (followOn(t) ? ' ← CH ' + t.row.inch : '');      // the arrow is a running claim
     // the pitches, not just the degree: CH 2 names the chord it is sounding,
     // and a follower names what it is holding
     let extra = current === 1 ? chordLine() : '';
@@ -1261,8 +1272,10 @@ if ('IntersectionObserver' in window) {
       TRACKS.forEach((f, j) => {
         if (feeder[j] !== i) return;
         posOf[j] = (posOf[j] + 1) % lenOf(f);
-        // FREEZE keeps the chord it latched on entry; ON takes each one live
+        // FREEZE keeps the chord it latched; ON takes each one live, and a
+        // frozen follower with nothing latched catches the first one it hears
         if (!followFrozen(f)) heldOf[j] = { degree: chordsOf[i][s], notes: chordNotes(i, s) };
+        else if (!heldOf[j]) heldOf[j] = { degree: chordsOf[i][s], notes: chordNotes(i, s) };
         resolve(j, durOf(j, posOf[j]));
         moved[j] = true;
       });
