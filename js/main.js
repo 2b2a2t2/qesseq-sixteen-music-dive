@@ -905,9 +905,10 @@ if ('IntersectionObserver' in window) {
     b.addEventListener('click', () => {
       const n = keyTargetOf(Number(b.dataset.key), TRACKS[current]);
       if (!n) return;                        // F1 on a DRUM track has no job
-      if (editTarget !== n) { editTarget = n; paint(); return; }
-      // the armed key steps on: POLY's F1 walks FX -> EMB, then back to the steps
-      editTarget = n === 5 ? 7 : 0;
+      // the armed key steps on, and POLY's F1 owns both of its states: the
+      // firmware walks FX (5) -> EMB (7) -> steps (0), so EMB is still "F1"
+      editTarget = editTarget === n ? (n === 5 ? 7 : 0)
+        : (n === 5 && editTarget === 7 ? 0 : n);
       paint();
     });
   });
