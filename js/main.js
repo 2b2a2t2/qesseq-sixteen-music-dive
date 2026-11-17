@@ -166,6 +166,116 @@ if ('IntersectionObserver' in window) {
     const lo = 24 + 12 * t.row.low;
     return [lo, Math.min(127, lo + 12 * t.row.range - 1)];
   };
+  // Arpie's walk (Keyboard.cpp arpNoteAt), with the F sub-page knobs at the
+  // values the plain page implies: the chord sorted low to high, one copy per
+  // SPAN octave folding past MIDI 127 back down, the MODE shape over it, then
+  // the INST expansion.  RANDOM shuffles each octave group from a hash of the
+  // chord, so a static chord repeats exactly; RANDOM2 rerolls once a bar
+  function arpWalk(chord, row, idx) {
+    if (!chord || !chord.length) return null;
+    const sorted = chord.slice().sort((a, b) => a - b);
+    const n = sorted.length;
+    const span = clamp(row.span, 1, 4);
+    const src = [];
+    for (let o = 0; o < span && src.length < ARP_MAX; o++) {
+      for (let i = 0; i < n && src.length < ARP_MAX; i++) {
+        let v = sorted[i] + 12 * o;
+        while (v > 127) v -= 12;
+        src.push(v);
+      }
+    }
+    const L = src.length;
+    const mode = clamp(row.mode, 0, 8);
+    let ord = src.slice();
+    let M = L;
+    // the chord's fingerprint: every stochastic choice hangs off it
+    let h = 0x811C9DC5 >>> 0;
+    for (let i = 0; i < n; i++) {
+      h = (h ^ sorted[i]) >>> 0;
+      h = Math.imul(h, 16777619) >>> 0;
+    }
+    h = (Math.imul(h, 2654435761) + span * 977 + mode * 131) >>> 0;
+    if (mode === 1) {                          // DOWN
+      ord = src.slice().reverse();
+    } else if (mode === 2 && L > 1) {          // UPDOWN: turning points once
+      const k = src.slice();
+      for (let i = L - 2; i > 0; i--) k.push(src[i]);
+      ord = k; M = k.length;
+    } else if (mode === 3 || mode === 4) {    // RANDOM / RANDOM2
+      const cycle = mode === 4 ? Math.floor(idx / 16) : 0;
+      for (let o = 0; o < span; o++) {
+        let x = (h ^ Math.imul(0x9E3779B9, o + 1) ^ Math.imul(0x85EBCA6B, cycle + 1)) >>> 0;
+        if (!x) x = 0x9E3779B9;
+        for (let i = n - 1; i > 0; i--) {
+          x ^= x << 13; x >>>= 0;
+          x ^= x >>> 17;
+          x ^= x << 5; x >>>= 0;
+          if (!x) x = 0x9E3779B9;
+          const j = x % (i + 1);
+          const a = o * n + i, b = o * n + j;
+          const t = ord[a]; ord[a] = ord[b]; ord[b] = t;
+        }
+      }
+    } else if (mode === 5) {                   // OUTIN: low, high, in, in...
+      const k = [];
+      let lo = 0, hi = L - 1;
+      while (lo <= hi && k.length < ARP_MAX) {
+        k.push(src[lo]);
+        if (lo++ < hi) k.push(src[hi--]);
+      }
+      ord = k; M = k.length;
+    } else if (mode === 6) {                   // INOUT: from the pivot outward
+      const piv = 0;                           // PIVOT is at its ROOT default
+      const k = [src[piv]];
+      for (let d = 1; k.length < L && d < L; d++) {
+        if (piv >= d) k.push(src[piv - d]);
+        if (k.length < L && piv + d < L) k.push(src[piv + d]);
+      }
+      ord = k; M = k.length;
+    } else if (mode === 7 || mode === 8) {     // CONV / DIV by distance
+      const piv = 0;
+      const used = new Array(L).fill(false);
+      const k = [];
+      while (k.length < L) {
+        let best = -1, bd = 0;
+        for (let i = 0; i < L; i++) {
+          if (used[i]) continue;
+          const d = Math.abs(i - piv);
+          if (best < 0 || (mode === 8 ? d < bd : d > bd)) { best = i; bd = d; }
+        }
+        if (best < 0) break;
+        used[best] = true;
+        k.push(src[best]);
+      }
+      ord = k; M = k.length;
+    }
+    // INST expansion (arpExpand): OFF passes through, HI/LOW put the extreme
+    // note in front of every other one, 3F1B/4F2B walk forward and step back
+    const inst = clamp(row.inst, 0, 4);
+    let out = ord.slice(0, M);
+    if (inst === 1 || inst === 2) {
+      let ext = out[0];
+      for (const v of out) ext = inst === 1 ? Math.max(ext, v) : Math.min(ext, v);
+      const k = [];
+      for (const v of out) {
+        if (v === ext || k.length + 2 > ARP_MAX) continue;
+        k.push(ext, v);
+      }
+      out = k;
+    } else if (inst === 3 || inst === 4) {
+      const fwd = inst === 3 ? 3 : 4;
+      const back = inst === 3 ? 1 : 2;
+      const k = [];
+      let i = 0, j = 0;
+      while (i >= 0 && i < out.length && k.length < ARP_MAX) {
+        k.push(out[i]);
+        j++;
+        i = j % fwd === 0 ? i - back : i + 1;
+      }
+      out = k;
+    }
+    return out.length ? out : null;
+  }
 
   const panelKeys = [...document.querySelectorAll('#stepgrid .panel__key[data-note]')];
   const stepEditArm = document.getElementById('stepEditArm');
@@ -208,6 +318,8 @@ if ('IntersectionObserver' in window) {
       len: 16, follow: 0, speed: 2, inch: t.ch, track: t.ch,
       // GEN window: LOW C1 and 2 octaves, the boot values (Gen.cpp)
       low: 1, range: 2,
+      // ARP page: span 1 octave, MODE UP, INSERT OFF, SKIP off (SeqClock.cpp)
+      span: 1, mode: 0, inst: 0, skip: 0,
       swing: 0, amt: 50,
       genre: 0, mood: 50, tens: 50, motion: 50, cad: 0, cpx: 50, phrase: 0, surp: 50
     };
@@ -259,7 +371,12 @@ if ('IntersectionObserver' in window) {
   // MONO track type (SeqClock.h seqMonoTypeName): ROOT plays the incoming
   // chord's root, STRUM rakes the whole chord, BASS/ARP/LEAD shape it through
   // the GEN window, the ARP page and the LEAD params
-  const MONO_ROOT = 0, MONO_BASS = 1, MONO_STRUM = 3, MONO_LEAD = 4;
+  const MONO_ROOT = 0, MONO_BASS = 1, MONO_ARP = 2, MONO_STRUM = 3, MONO_LEAD = 4;
+  // the ARP page's own vocabulary (SeqClock.h seqArpModeName / seqArpInstName)
+  const ARP_MODES = ['UP', 'DOWN', 'UPDOWN', 'RANDOM', 'RANDOM2', 'OUTIN', 'INOUT', 'CONV', 'DIV'];
+  const ARP_INSTS = ['OFF', 'HI', 'LOW', '3F1B', '4F2B'];
+  const ARP_MAX = 64;                                  // ARP_SEQ_MAX
+  const arpIdx = TRACKS.map(() => 0);                  // the walk's position
   const MONO_TYPE_NAMES = ['ROOT', 'BASS', 'ARP', 'STRUM', 'LEAD'];
   const monoType = TRACKS.map(() => MONO_ROOT);
   // a HAND step's performed gesture: the note and the ms it was struck at, in
@@ -349,13 +466,19 @@ if ('IntersectionObserver' in window) {
     const prev = eventOf[i][vi];
     const gate = clamp(t.gate, 10, 100) / 100;
     const silent = { strike: false, held: false, vel: 0, glide: false, lenMs: 0, hits: 0 };
-    if (!state[i][vi][s]) return silent;
+    // ARP SKIP: a rest or a probability miss still walks the position, so the
+    // sequence keeps running over dead steps instead of pausing on them
+    const arpDead = () => {
+      if (t.type === 'MONO' && monoType[i] === MONO_ARP && t.row.skip) arpIdx[i]++;
+    };
+    if (!state[i][vi][s]) { arpDead(); return silent; }
     // a TIE carries the note through this step instead of hitting it again
     if ((bits & TIE) && prev && (prev.strike || prev.held)) {
       return { strike: false, held: true, vel: prev.vel, glide: false,
         lenMs: prev.lenMs + durMs * gate, hits: 0 };
     }
     if ((bits & PROB) && Math.random() * 100 >= clamp(t.prob, 0, 100)) {
+      arpDead();
       return silent;
     }
     // RATCHET repeats the hit 2..4 times inside the step's own length, the way
@@ -380,7 +503,13 @@ if ('IntersectionObserver' in window) {
       const d = src >= 0 ? chordsOf[src][posOf[src]] : -1;
       const midi = d >= 0 ? voicingMidi(t, d) : [];
       const mt = monoType[i];
-      if (mt === MONO_STRUM && midi.length > 1) {
+      if (mt === MONO_ARP) {
+        const walk = arpWalk(midi, t.row, arpIdx[i]);
+        if (walk) {
+          ev.notes = [{ m: walk[arpIdx[i] % walk.length], at: 0 }];
+          arpIdx[i]++;                  // the walk moves on a played step
+        }
+      } else if (mt === MONO_STRUM && midi.length > 1) {
         const gap = Math.min(40, Math.max(8, durMs / (midi.length * 2)));
         ev.notes = midi.slice().sort((a, b) => a - b).map((m, k) => ({ m, at: Math.round(k * gap) }));
         ev.strumGap = Math.round(gap);
@@ -637,6 +766,19 @@ if ('IntersectionObserver' in window) {
       { label: 'TES%', min: 0, max: 100, get: t => t.page.tesr, set: (t, v) => { t.page.tesr = v; }, fmt: pctOf },
       { label: 'NOT%', min: 0, max: 100, get: t => t.page.notr, set: (t, v) => { t.page.notr = v; }, fmt: pctOf }
     ],
+    // M2 ARP page: ENC2 SPAN, ENC3 SKIP, ENC4 MODE, ENC7 INSERT (Events.cpp,
+    // Display.cpp).  The F sub-page knobs the card does not carry stay at the
+    // values the plain page implies (ORDER = MODE, STEP 1/1, PIVOT = ROOT,
+    // MORPH / WEIGHT / MUTATE 0, ENGINE off)
+    arp: [
+      { label: '—', idle: true },
+      { label: 'SPAN', min: 1, max: 4, get: t => t.row.span, set: (t, v) => { t.row.span = v; }, fmt: v => v + ' oct' },
+      { label: 'SKIP', min: 0, max: 1, get: t => t.row.skip, set: (t, v) => { t.row.skip = v; }, fmt: v => (v ? 'ON' : 'OFF') },
+      { label: 'MODE', min: 0, max: ARP_MODES.length - 1, get: t => t.row.mode, set: (t, v) => { t.row.mode = v; }, fmt: v => ARP_MODES[v] },
+      { label: '—', idle: true }, { label: '—', idle: true },
+      { label: 'INSERT', min: 0, max: ARP_INSTS.length - 1, get: t => t.row.inst, set: (t, v) => { t.row.inst = v; }, fmt: v => ARP_INSTS[v] },
+      { label: '—', idle: true }
+    ],
     // BASS page, F1 = the FULL options row: ENC1 TONES, ENC2 RANGE, ENC3 LOW,
     // ENC4 ALGO (Events.cpp).  RANGE and LOW are the ones the card carries
     genopts: [
@@ -672,7 +814,7 @@ if ('IntersectionObserver' in window) {
     ]
   };
   const PAGE_HEAD = { drum: 'DRUM PATTERN', gen: 'GENERATOR',
-    genopts: 'BASS OPTIONS', lead: 'LEAD' };
+    genopts: 'BASS OPTIONS', lead: 'LEAD', arp: 'ARP' };
   // a track owns an ordered page list: M2 opens the first, M2 again walks on.
   // A BASS track carries the BASS page and its options page, a LEAD track the
   // LEAD page beside the shared generator row, the others their single page
@@ -680,7 +822,9 @@ if ('IntersectionObserver' in window) {
     if (t.type === 'DRUM') return ['drum'];
     if (t.type === 'MONO') {
       const mt = monoType[TRACKS.indexOf(t)];
-      return mt === MONO_LEAD ? ['gen', 'lead'] : mt === MONO_BASS ? ['gen', 'genopts'] : ['gen'];
+      return mt === MONO_LEAD ? ['gen', 'lead']
+        : mt === MONO_BASS ? ['gen', 'genopts']
+        : mt === MONO_ARP ? ['gen', 'arp'] : ['gen'];
     }
     return t.name === 'SKANK' ? ['skank'] : t.name === 'CHORDS' ? ['comp'] : [];
   };
