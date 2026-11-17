@@ -182,10 +182,10 @@
                         <span data-scr="edit-legend" style="grid-area:2 / 1">EDIT</span>
                         <span data-scr="page-legend" style="grid-area:2 / 2">PAGE</span>
                         <span style="grid-area:2 / 3">GENERATE</span>
-                        <button class="scr-legend__key" type="button" data-target="1" aria-pressed="false" style="grid-area:3 / 1" aria-label="TIE, edit the steps' ties">TIE</button>
-                        <button class="scr-legend__key" type="button" data-target="2" aria-pressed="false" style="grid-area:3 / 2" aria-label="GLIDE, edit the steps' glides">GLIDE</button>
-                        <button class="scr-legend__key" type="button" data-target="3" aria-pressed="false" style="grid-area:3 / 3" aria-label="ACCENT, edit the steps' accents">ACCENT</button>
-                        <button class="scr-legend__key" type="button" data-target="4" aria-pressed="false" style="grid-area:3 / 4" aria-label="PROBABILITY, edit the steps' probability">PROBABILITY</button>
+                        <button class="scr-legend__key" type="button" data-key="0" data-legend aria-pressed="false" style="grid-area:3 / 1" aria-label="F1">TIE</button>
+                        <button class="scr-legend__key" type="button" data-key="1" data-legend aria-pressed="false" style="grid-area:3 / 2" aria-label="F2">GLIDE</button>
+                        <button class="scr-legend__key" type="button" data-key="2" data-legend aria-pressed="false" style="grid-area:3 / 3" aria-label="F3">ACCENT</button>
+                        <button class="scr-legend__key" type="button" data-key="3" data-legend aria-pressed="false" style="grid-area:3 / 4" aria-label="F4">PROBABILITY</button>
                       </div>
                     </div>
                     <div class="scr scr--seq scr--row" hidden>
@@ -305,10 +305,10 @@
                   <button type="button" class="panel__pad panel__pad--arm" id="stepEditArm" aria-pressed="false" style="grid-column:3" aria-label="M1, arm the record knobs">M1</button>
                   <button type="button" class="panel__pad panel__pad--arm" id="pagePad" aria-pressed="false" style="grid-column:4" aria-label="M2, opens the page this track carries">M2</button>
                   <button type="button" class="panel__pad panel__pad--arm" id="genPad" style="grid-column:5" aria-label="M3, generate the chord progression">M3</button>
-                  <button type="button" class="panel__pad panel__pad--arm" data-target="1" aria-pressed="false" style="grid-column:6" aria-label="F1, the TIE edit target">F1</button>
-                  <button type="button" class="panel__pad panel__pad--arm" data-target="2" aria-pressed="false" style="grid-column:7" aria-label="F2, the GLIDE edit target">F2</button>
-                  <button type="button" class="panel__pad panel__pad--arm" data-target="3" aria-pressed="false" style="grid-column:8" aria-label="F3, the ACCENT edit target">F3</button>
-                  <button type="button" class="panel__pad panel__pad--arm" data-target="4" aria-pressed="false" style="grid-column:9" aria-label="F4, the PROBABILITY edit target">F4</button>
+                  <button type="button" class="panel__pad panel__pad--arm" data-key="0" aria-pressed="false" style="grid-column:6" aria-label="F1">F1</button>
+                  <button type="button" class="panel__pad panel__pad--arm" data-key="1" aria-pressed="false" style="grid-column:7" aria-label="F2">F2</button>
+                  <button type="button" class="panel__pad panel__pad--arm" data-key="2" aria-pressed="false" style="grid-column:8" aria-label="F3">F3</button>
+                  <button type="button" class="panel__pad panel__pad--arm" data-key="3" aria-pressed="false" style="grid-column:9" aria-label="F4">F4</button>
                   <span class="panel__key" data-note="0" style="grid-column:10">C</span>
                   <span class="panel__key" data-note="2" style="grid-column:11">D</span>
                   <span class="panel__key" data-note="4" style="grid-column:12">E</span>
@@ -325,7 +325,7 @@
               <span>SPEED <b id="speedCount">1/16</b></span>
               <span>TRACKS <b>4 OF 16</b></span>
             </div>
-            <p class="stepgrid__hint">▸ tap a pad to toggle it · M1 arms the edit row, M2 opens the track's page, M3 re-rolls the generated part (CH 2's chords, or the kit) · F1–F4 pick TIE, GLIDE, ACCENT or PROBABILITY · CH 1 is the kit, one line per voice<span class="only-narrow"> · swipe →</span></p>
+            <p class="stepgrid__hint">▸ tap a pad to toggle it · M1 arms the edit row, M2 opens the track's page, M3 re-rolls the generated part (CH 2's chords, or the kit) · F1–F4 pick this track type's edit targets (MONO TIE/GLIDE/ACCENT/PROB, POLY FX/TYPE/ACCENT/PROB, DRUM RATCHET/ACCENT/PROB) · CH 1 is the kit, one line per voice<span class="only-narrow"> · swipe →</span></p>
           </div>
         </div>
       </article>

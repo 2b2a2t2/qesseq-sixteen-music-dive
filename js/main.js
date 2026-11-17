@@ -155,7 +155,7 @@ if ('IntersectionObserver' in window) {
   const panelKeys = [...document.querySelectorAll('#stepgrid .panel__key[data-note]')];
   const stepEditArm = document.getElementById('stepEditArm');
   const editLegend = document.querySelector('[data-scr="edit-legend"]');
-  const targetButtons = [...document.querySelectorAll('#stepgrid [data-target]')];
+  const targetButtons = [...document.querySelectorAll('#stepgrid [data-key]')];
   const pagePad = document.getElementById('pagePad');
   const pageLegend = document.querySelector('[data-scr="page-legend"]');
   const seqCells = [...document.querySelectorAll('.scr--seq:not(.scr--row) .scr-grid .scr-cell')]
@@ -205,11 +205,44 @@ if ('IntersectionObserver' in window) {
   const STEPS_MAX = 64;
   const state = TRACKS.map(t => voicesOf(t).map(v =>
     Array.from({ length: STEPS_MAX }, (_, i) => v.pattern[i % 16] === 'x')));
-  // per-step attributes, the ones the M1 edit row's F keys select: a bitmask
-  // per step, so a step can carry TIE and ACCENT at once (Events.cpp stepAttrs)
-  const ATTR_BIT = [0, 1, 2, 4, 8];                    // 1 TIE, 2 GLIDE, 4 ACC, 8 PROB
-  const ATTR_NAME = [null, 'TIE', 'GLIDE', 'ACCENT', 'PROBABILITY'];
+  // per-step attributes, the ones the M1 edit row's keys stamp: a bitmask per
+  // step, so a step can carry TIE and ACCENT at once (Events.cpp stepAttrs)
+  const TIE = 1, GLIDE = 2, ACC = 4, PROB = 8, EMB = 16;
   const attrs = TRACKS.map(t => voicesOf(t).map(() => new Uint8Array(STEPS_MAX)));
+  // the targets that carry a value rather than a bit: FX and TYPE per POLY step,
+  // the RATCHET count per DRUM step (Drum.cpp / Events.cpp stepFxType, stepType
+  // and stepRatchetStamp).  0 = the step inherits / plays a single hit
+  const fxOf = TRACKS.map(t => voicesOf(t).map(() => new Uint8Array(STEPS_MAX)));
+  const typeOf = TRACKS.map(t => voicesOf(t).map(() => new Uint8Array(STEPS_MAX)));
+  const ratOf = TRACKS.map(t => voicesOf(t).map(() => new Uint8Array(STEPS_MAX)));
+  // stepEditActive(): MONO arms 1..4, POLY arms 3,4 plus 5 FX / 6 TYPE / 7 EMB,
+  // DRUM arms 3,4 plus 8 RATCHET.  The panel has four F keys, so the row is
+  // relabelled per type: on POLY F1 is FX (a second tap walks on to EMB) and F2
+  // is TYPE, while on a DRUM track F1 has no job at all and F2 is RATCHET
+  const TARGETS = {
+    1: { name: 'TIE', bit: TIE },
+    2: { name: 'GLIDE', bit: GLIDE },
+    3: { name: 'ACCENT', bit: ACC },
+    4: { name: 'PROBABILITY', bit: PROB },
+    5: { name: 'FX', vals: ['—', 'sus2', 'sus4', '6', 'm7', 'M7', '9', 'color'] },
+    6: { name: 'TYPE', vals: ['INHERIT', 'STEP', 'STRUM', 'HAND'] },
+    7: { name: 'EMB', bit: EMB },
+    8: { name: 'RATCHET' }
+  };
+  const TARGET_KEY = { MONO: [1, 2, 3, 4], POLY: [5, 6, 3, 4], DRUM: [0, 8, 3, 4] };
+  // what the value targets stamp, in the firmware's own vocabulary
+  let fxArm = 1, typeArm = 1, ratArm = 2;              // sus2 / STEP / 2 repeats
+  const keyTargetOf = (k, t) => (TARGET_KEY[t.type] || TARGET_KEY.MONO)[k];
+  const armNameOf = n => (n === 5 ? TARGETS[5].vals[fxArm]
+    : n === 6 ? TARGETS[6].vals[typeArm] : n === 8 ? '×' + ratArm : '');
+  const valAt = (i, vi, s, target) => (target === 5 ? fxOf[i][vi][s]
+    : target === 6 ? typeOf[i][vi][s] : target === 8 ? ratOf[i][vi][s] : 0);
+  function stampAt(i, vi, s, target) {
+    if (target === 5) fxOf[i][vi][s] = fxOf[i][vi][s] === fxArm ? 0 : fxArm;
+    else if (target === 6) typeOf[i][vi][s] = typeOf[i][vi][s] === typeArm ? 0 : typeArm;
+    else if (target === 8) ratOf[i][vi][s] = ratOf[i][vi][s] === ratArm ? 0 : ratArm;
+    else attrs[i][vi][s] ^= TARGETS[target].bit;
+  }
 
   // SEQMODE3's LEN is the loop length of the track in front of you
   const lenOf = t => clamp(Math.round(t.row.len), 1, STEPS_MAX);
@@ -255,22 +288,26 @@ if ('IntersectionObserver' in window) {
     const bits = attrs[i][vi][s];
     const prev = eventOf[i][vi];
     const gate = clamp(t.gate, 10, 100) / 100;
-    const silent = { strike: false, held: false, vel: 0, glide: false, lenMs: 0 };
+    const silent = { strike: false, held: false, vel: 0, glide: false, lenMs: 0, hits: 0 };
     if (!state[i][vi][s]) return silent;
     // a TIE carries the note through this step instead of hitting it again
-    if ((bits & ATTR_BIT[1]) && prev && (prev.strike || prev.held)) {
+    if ((bits & TIE) && prev && (prev.strike || prev.held)) {
       return { strike: false, held: true, vel: prev.vel, glide: false,
-        lenMs: prev.lenMs + durMs * gate };
+        lenMs: prev.lenMs + durMs * gate, hits: 0 };
     }
-    if ((bits & ATTR_BIT[4]) && Math.random() * 100 >= clamp(t.prob, 0, 100)) {
+    if ((bits & PROB) && Math.random() * 100 >= clamp(t.prob, 0, 100)) {
       return silent;
     }
+    // RATCHET repeats the hit 2..4 times inside the step's own length, the way
+    // stepRatchetStamp lays it on a drum voice
+    const hits = ratOf[i][vi][s] || 1;
     return {
       strike: true,
       held: false,
-      vel: (bits & ATTR_BIT[3]) ? Math.max(t.vel, t.acc) : t.vel,
-      glide: (bits & ATTR_BIT[2]) !== 0,
-      lenMs: durMs * gate,
+      vel: (bits & ACC) ? Math.max(t.vel, t.acc) : t.vel,
+      glide: (bits & GLIDE) !== 0,
+      lenMs: (durMs * gate) / hits,
+      hits,
     };
   }
   const trackStrikes = i => eventOf[i].some(e => !!e && e.strike);
@@ -285,7 +322,7 @@ if ('IntersectionObserver' in window) {
     return !trackStrikes(feederIdxOf(current));
   };
   let retimeWalk = null;
-  let editTarget = 0;                                  // 0 = STEPS, 1..4 = F keys
+  let editTarget = 0;                                  // 0 = STEPS, else 1..8 target
   let pageOpen = false;                                // the M2 page of this track
   const variant = { enc: 1, seq: 1, key: 1 };          // ENC/SEQ/KEY 1..4
   const clock = { bpm: 120 };                          // SEQMODE3's BPM is global
@@ -738,8 +775,8 @@ if ('IntersectionObserver' in window) {
       const c = cell[s % 16];
       for (let l = 0; l < 4; l++) {
         state[i][l][s] = c.hits.indexOf(l) >= 0;
-        if (c.acc.indexOf(l) >= 0) attrs[i][l][s] |= ATTR_BIT[3];
-        else attrs[i][l][s] &= ~ATTR_BIT[3];
+        if (c.acc.indexOf(l) >= 0) attrs[i][l][s] |= ACC;
+        else attrs[i][l][s] &= ~ACC;
       }
     }
     return len;
@@ -822,19 +859,28 @@ if ('IntersectionObserver' in window) {
     encKnobs.forEach((k, i) => k.style.setProperty('--v', knobPos(i)));
   }
 
-  // the F keys pick the edit-row target; only a MONO track can edit TIE and
-  // GLIDE (Events.cpp stepEditActive: MONO 1..4, POLY and DRUM 3..4)
-  const targetAllowed = (n, t) => n >= 3 || t.type === 'MONO';
+  // a key can only arm a target its track type carries (stepEditActive).  EMB
+  // has no key of its own: it is POLY's second tap on F1
+  const targetAllowed = (n, t) => n > 0 && (n === 7 ? t.type === 'POLY'
+    : (TARGET_KEY[t.type] || TARGET_KEY.MONO).indexOf(n) >= 0);
 
   function markTargets(t) {
     const track = t || TRACKS[current];
     targetButtons.forEach(b => {
-      const n = Number(b.dataset.target);
-      const on = n === editTarget;
-      const ok = targetAllowed(n, track);
+      const k = Number(b.dataset.key);
+      const n = keyTargetOf(k, track);
+      const spec = TARGETS[n];
+      const on = n !== 0 && n === editTarget;
+      const arm = spec ? armNameOf(n) : '';
       b.classList.toggle('is-on', on);
       b.setAttribute('aria-pressed', String(on));
-      b.classList.toggle('is-off', !ok);
+      b.classList.toggle('is-off', !spec);
+      if (b.hasAttribute('data-legend')) {          // the legend names the target
+        b.textContent = spec ? spec.name + (arm ? ' ' + arm : '') : '—';
+      }
+      b.setAttribute('aria-label', spec
+        ? 'F' + (k + 1) + ', the ' + spec.name + (arm ? ' ' + arm : '') + ' edit target'
+        : 'F' + (k + 1) + ', no edit target on this track type');
     });
   }
 
@@ -857,8 +903,11 @@ if ('IntersectionObserver' in window) {
 
   targetButtons.forEach(b => {
     b.addEventListener('click', () => {
-      const n = Number(b.dataset.target);
-      editTarget = editTarget === n ? 0 : n;
+      const n = keyTargetOf(Number(b.dataset.key), TRACKS[current]);
+      if (!n) return;                        // F1 on a DRUM track has no job
+      if (editTarget !== n) { editTarget = n; paint(); return; }
+      // the armed key steps on: POLY's F1 walks FX -> EMB, then back to the steps
+      editTarget = n === 5 ? 7 : 0;
       paint();
     });
   });
@@ -875,6 +924,12 @@ if ('IntersectionObserver' in window) {
       return;
     }
     const t = TRACKS[current];
+    // while a value target is armed, the encoder the firmware reads picks the
+    // value it stamps: ENC7 for FX / TYPE / EMB, ENC6 for the RATCHET count
+    const tg = stepEdit && targetAllowed(editTarget, t) ? editTarget : 0;
+    if (tg === 5 && i === 6) { fxArm = 1 + (((fxArm - 1 + steps) % 7) + 7) % 7; paint(); return; }
+    if (tg === 6 && i === 6) { typeArm = 1 + (((typeArm - 1 + steps) % 3) + 3) % 3; paint(); return; }
+    if (tg === 8 && i === 5) { ratArm = 2 + (((ratArm - 2 + steps) % 3) + 3) % 3; paint(); return; }
     const rk = rowKey();
     if (rk) {
       const sp = (ROW_SPECS[rk] || [])[i];
@@ -987,7 +1042,7 @@ if ('IntersectionObserver' in window) {
         // with an attribute armed the pads edit that flag instead of the note
         if (mode === 'seq' && stepEdit && editTarget &&
             targetAllowed(editTarget, TRACKS[current])) {
-          attrs[current][voice][at] ^= ATTR_BIT[editTarget];
+          stampAt(current, voice, at, editTarget);
         } else {
           state[current][voice][at] = !state[current][voice][at];
         }
@@ -1028,7 +1083,7 @@ if ('IntersectionObserver' in window) {
     if (scr.headLeft) {
       const shown = stepEdit && editTarget && targetAllowed(editTarget, t);
       scr.headLeft.textContent = page ? (PAGE_HEAD[page] || 'SEQUENCER')
-        : shown ? ATTR_NAME[editTarget]
+        : shown ? TARGETS[editTarget].name
         : variant.seq > 1 ? 'SEQUENCER ' + variant.seq : 'SEQUENCER';
     }
     if (scr.octave) scr.octave.textContent = String(t.oct);
@@ -1091,7 +1146,7 @@ if ('IntersectionObserver' in window) {
     const v = voicesOf(t)[voice];
     const editing = mode === 'seq' && stepEdit && editTarget !== 0 &&
       targetAllowed(editTarget, t);
-    const bit = editing ? ATTR_BIT[editTarget] : 0;
+    const bit = editing && TARGETS[editTarget].bit ? TARGETS[editTarget].bit : 0;
     host.dataset.edit = editing ? '1' : '0';
     const win = winOf(t);
     const len = lenOf(t);
@@ -1114,7 +1169,8 @@ if ('IntersectionObserver' in window) {
       else b.style.removeProperty('--hit-vel');
       // past the loop length the pad still holds its step, it just isn't played
       b.classList.toggle('is-out', n >= len);
-      const has = bit !== 0 && (attrs[current][voice][n] & bit) !== 0;
+      const val = bit ? 0 : valAt(current, voice, n, editing ? editTarget : 0);
+      const has = bit !== 0 ? (attrs[current][voice][n] & bit) !== 0 : val > 0;
       b.dataset.attr = has ? '1' : '0';
       const chord = current === 1 ? chordName(1, n) : '';
       const notes = current === 1 ? chordNotes(1, n) : [];
@@ -1122,13 +1178,23 @@ if ('IntersectionObserver' in window) {
       if (notes.length) say.push(notes.join(' '));
       if (ev && (ev.strike || ev.held)) say.push('vel ' + ev.vel);
       if (ev && ev.strike) say.push(Math.round(ev.lenMs) + ' ms');
+      if (ev && ev.strike && ev.hits > 1) say.push('×' + ev.hits + ' ratchet');
       if (ev && ev.glide) say.push('glide');
       if (ev && ev.held) say.push('tied');
+      // what the step carries of the value targets, named in the firmware's terms
+      const rat = ratOf[current][voice][n];
+      if (rat) say.push('ratchet ×' + rat);
+      const fxV = fxOf[current][voice][n];
+      if (fxV) say.push('FX ' + TARGETS[5].vals[fxV]);
+      const typeV = typeOf[current][voice][n];
+      if (typeV) say.push('TYPE ' + TARGETS[6].vals[typeV]);
       b.title = say.join(' · ');
       b.setAttribute('aria-label', v.name + ' step ' + (n + 1) +
         (chord ? ' · ' + chord : '') +
         (notes.length ? ' (' + notes.join(' ') + ')' : '') +
-        (editing ? ' ' + ATTR_NAME[editTarget] + (has ? ' on' : ' off')
+        (editing ? ' ' + TARGETS[editTarget].name +
+          (armNameOf(editTarget) ? ' ' + armNameOf(editTarget) : '') +
+          (has ? ' on' : ' off')
           : on ? ' on' : ' off'));
     });
     markTargets(t);
