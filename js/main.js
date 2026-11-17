@@ -1205,7 +1205,12 @@ if ('IntersectionObserver' in window) {
     const page = pageOpen ? pageOf(t) : null;
     if (scr.headLeft) {
       const shown = stepEdit && editTarget && targetAllowed(editTarget, t);
+      // with TYPE armed the row says what a step left on INHERIT falls back to,
+      // so the SEQMODE3 TYPE does not have to be read from another screen
+      const inherit = shown && editTarget === 6
+        ? 'INHERIT · ' + POLY_TYPE_NAMES[polyType[current]] : '';
       scr.headLeft.textContent = page ? (PAGE_HEAD[page] || 'SEQUENCER')
+        : inherit ? inherit
         : shown ? TARGETS[editTarget].name
         : variant.seq > 1 ? 'SEQUENCER ' + variant.seq : 'SEQUENCER';
     }
@@ -1293,6 +1298,9 @@ if ('IntersectionObserver' in window) {
       // past the loop length the pad still holds its step, it just isn't played
       b.classList.toggle('is-out', n >= len);
       const val = bit ? 0 : valAt(current, voice, n, editing ? editTarget : 0);
+      // a POLY step with no TYPE stamp replays the track's own type
+      const inherits = editing && editTarget === 6 && typeOf[current][voice][n] === 0;
+      const fallsTo = inherits ? 'INHERIT · ' + POLY_TYPE_NAMES[polyType[current]] : '';
       const has = bit !== 0 ? (attrs[current][voice][n] & bit) !== 0 : val > 0;
       b.dataset.attr = has ? '1' : '0';
       const chord = current === 1 ? chordName(1, n) : '';
@@ -1305,6 +1313,7 @@ if ('IntersectionObserver' in window) {
           say.push((ev.strumGap ? 'strum ' : 'hand ') + ev.notes.map(n => n.at).join('·') + ' ms');
       }
       if (ev && ev.buffered) say.push('HAND buffered - play the white keys');
+      if (fallsTo) say.push(fallsTo);
       if (ev && (ev.strike || ev.held)) say.push('vel ' + ev.vel);
       if (ev && ev.strike) say.push(Math.round(ev.lenMs) + ' ms');
       if (ev && ev.strike && ev.hits > 1) say.push('×' + ev.hits + ' ratchet');
@@ -1321,9 +1330,10 @@ if ('IntersectionObserver' in window) {
       b.setAttribute('aria-label', v.name + ' step ' + (n + 1) +
         (chord ? ' · ' + chord : '') +
         (notes.length ? ' (' + notes.join(' ') + ')' : '') +
-        (editing ? ' ' + TARGETS[editTarget].name +
-          (armNameOf(editTarget) ? ' ' + armNameOf(editTarget) : '') +
-          (has ? ' on' : ' off')
+        (editing ? (fallsTo ? ' ' + fallsTo
+          : ' ' + TARGETS[editTarget].name +
+            (armNameOf(editTarget) ? ' ' + armNameOf(editTarget) : '') +
+            (has ? ' on' : ' off'))
           : on ? ' on' : ' off'));
     });
     markTargets(t);
