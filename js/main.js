@@ -221,12 +221,19 @@ if ('IntersectionObserver' in window) {
   // AMT scales each toward 50 = straight, which is what seqSwingRatioOf reports
   const SWING_DEPTH = [50, 75, 70, 72, 62, 66, 64, 75, 67];
 
-  // a follower takes its position from its feeder's hits, so a rest in the
-  // feeder leaves it holding the chord it was on (SeqClock.h seqFollowOf /
-  // FOLLOW FREEZE)
+  // A follower reads its feeder's playhead.  ON takes the chord the feeder is
+  // sounding and holds it through the feeder's rests; FREEZE latches the chord
+  // it hears when it is entered, so the follower keeps stepping on a frozen
+  // chord (SeqClock.cpp followOn: 0 OFF, 1 ON, 2 FREEZE - and boot is OFF, so
+  // the arrow only shows once the knob is turned)
   const posOf = TRACKS.map(() => 0);
-  const followOn = t => !!t.follow && t.row.follow === 1;
+  const followOn = t => !!t.follow && t.row.follow !== 0;
+  const followFrozen = t => !!t.follow && t.row.follow === 2;
   const feederOf = t => TRACKS.find(x => 'CH ' + x.ch === t.follow) || null;
+  const feederIdxOf = i => {
+    const f = feederOf(TRACKS[i]);
+    return f ? TRACKS.indexOf(f) : -1;
+  };
   // What the transport does with a step is what the M1 flags are for: TIE holds
   // the previous note instead of re-striking, ACCENT takes the track's accent
   // velocity, GLIDE slides in from the last pitch, PROBABILITY can drop the
@@ -263,10 +270,10 @@ if ('IntersectionObserver' in window) {
   const curPos = () => posOf[current];
   const curHolding = () => {
     const t = TRACKS[current];
-    const f = followOn(t) ? feederOf(t) : null;
-    if (!f) return false;
-    // a tie is not a new chord, so the follower freezes on it too
-    return !trackStrikes(TRACKS.indexOf(f));
+    if (!followOn(t)) return false;
+    if (followFrozen(t)) return true;                    // latched until FREEZE is left
+    // a tie is not a new chord, so the follower holds through it too
+    return !trackStrikes(feederIdxOf(current));
   };
   let retimeWalk = null;
   let editTarget = 0;                                  // 0 = STEPS, 1..4 = F keys
@@ -284,7 +291,7 @@ if ('IntersectionObserver' in window) {
     b.type = 'button';
     b.className = 'stepgrid__chan';
     b.style.setProperty('--pad', t.color);
-    b.innerHTML = '<b>CH ' + t.ch + '</b><small>' + t.type + (t.follow ? ' ← ' + t.follow : '') + '</small>';
+    b.innerHTML = '<b>CH ' + t.ch + '</b><small>' + t.type + '</small>';
     b.setAttribute('role', 'tab');
     b.setAttribute('aria-label', 'Channel ' + t.ch + ' — ' + t.type + ' track');
     b.addEventListener('click', () => selectTrack(i, 0));
@@ -497,6 +504,7 @@ if ('IntersectionObserver' in window) {
   // the firmware's INPUT CHANNEL, and KEYMODE4's genre list is genre_data.h.
   const SPEEDS = ['1/64', '1/32', '1/16', '1/8', '1/4', '1/2', '1', '2', '4'];
   const SWINGS = ['OFF', 'MPC60', 'MPC3K', 'SP1200', 'LINN', '808', '909', 'SHUF', 'TRIP'];
+  const FOLLOW_NAMES = ['OFF', 'ON', 'FREEZE'];          // Display.cpp folN
   const KEY_GENRES = ['POP', 'ROCK', 'JAZZ', 'CLASSICAL', 'FOLK', 'COUNTRY',
     'BLUES', 'RNB', 'FUNK', 'METAL', 'HIPHOP', 'ELECTRONIC', 'REGGAE',
     'DUBTECHNO', 'GOSPEL', 'LATIN', 'CINEMATIC', 'MODAL'];
@@ -518,7 +526,7 @@ if ('IntersectionObserver' in window) {
     seq3: [
       octRow,
       { label: 'LEN', min: 1, max: 64, get: t => t.row.len, set: (t, v) => { t.row.len = v; } },
-      { label: 'FOLLOW', min: 0, max: 1, get: t => t.row.follow, set: (t, v) => { t.row.follow = v; }, fmt: v => (v ? 'ON' : 'OFF') },
+      { label: 'FOLLOW', min: 0, max: 2, get: t => t.row.follow, set: (t, v) => { t.row.follow = v; }, fmt: v => FOLLOW_NAMES[v] },
       { label: 'SPEED', min: 0, max: SPEEDS.length - 1, get: t => t.row.speed, set: (t, v) => { t.row.speed = v; }, fmt: v => SPEEDS[v] },
       { label: 'INCH', min: 0, max: 16, get: t => t.row.inch, set: (t, v) => { t.row.inch = v; }, fmt: v => (v ? 'CH ' + v : 'OFF') },
       { label: 'TRACK', min: 1, max: 16, get: t => t.row.track, set: (t, v) => { t.row.track = v; }, fmt: v => 'CH ' + v },
@@ -592,6 +600,14 @@ if ('IntersectionObserver' in window) {
   const chordsOf = TRACKS.map(() => new Int8Array(STEPS_MAX).fill(-1));
   // what a following track is holding while its feeder rests
   const heldOf = TRACKS.map(() => null);
+  // entering FREEZE latches the chord the feeder is sounding at that instant,
+  // rather than the one its next hit happens to catch; leaving drops the latch
+  function syncFollow() {
+    const fi = followOn(TRACKS[current]) ? feederIdxOf(current) : -1;
+    heldOf[current] = fi >= 0 && followFrozen(TRACKS[current])
+      ? { degree: chordsOf[fi][posOf[fi]], notes: chordNotes(fi, posOf[fi]) }
+      : null;
+  }
   let chordRoll = 20260101;
 
   // imul keeps the roll inside 32 bits: plain multiplication overflowed the
@@ -854,7 +870,9 @@ if ('IntersectionObserver' in window) {
     if (rk) {
       const sp = (ROW_SPECS[rk] || [])[i];
       if (!sp || sp.dash || sp.ro || !sp.set) return;
+      const wasFollow = t.row.follow;
       sp.set(t, clamp(sp.get(t) + steps, sp.min, sp.max));
+      if (rk === 'seq3' && t.row.follow !== wasFollow) syncFollow();   // FREEZE latches here
       updateScreen();
       refreshKnobs();
       if (retimeWalk) retimeWalk();       // LEN/SPEED/BPM move the clock itself
@@ -1108,14 +1126,19 @@ if ('IntersectionObserver' in window) {
       const tab = tabs[i];
       if (!tab) return;
       tab.classList.toggle('is-hit', trackStrikes(i));
+      // the tab names its feeder only while FOLLOW is running
+      const small = tab.querySelector('small');
+      if (small) small.textContent = tab_t.type + (followOn(tab_t) ? ' ← ' + tab_t.follow : '');
+      tab.setAttribute('aria-label', 'Channel ' + tab_t.ch + ' — ' + tab_t.type + ' track' +
+        (followOn(tab_t) ? ', following ' + tab_t.follow : ''));
     });
     counter.textContent = String(pos + 1).padStart(2, '0') + ' / ' +
       String(len).padStart(2, '0');
     if (speedOut) speedOut.textContent = SPEEDS[clamp(t.row.speed, 0, SPEEDS.length - 1)];
     const label = 'CH ' + t.ch + ' · ' + t.type + ' · ' + v.name +
-      (t.follow ? ' ← ' + t.follow : '');
+      (followOn(t) ? ' ← ' + t.follow : '');      // the arrow is a running claim
     // the pitches, not just the degree: CH 2 names the chord it is sounding,
-    // and a frozen follower names the chord it is holding
+    // and a follower names what it is holding
     let extra = current === 1 ? chordLine() : '';
     if (current === 1) {
       const sound = chordNotes(1, pos);
@@ -1123,7 +1146,8 @@ if ('IntersectionObserver' in window) {
     }
     if (holding) {
       const held = heldOf[current];
-      extra += ' · FREEZE' + (held && held.notes.length ? ' ' + held.notes.join(' ') : '');
+      extra += ' · ' + (followFrozen(t) ? 'FREEZE' : 'HOLD') +
+        (held && held.notes.length ? ' ' + held.notes.join(' ') : '');
     }
     trackLabel.textContent = label + extra;
     updateScreen();
@@ -1210,7 +1234,7 @@ if ('IntersectionObserver' in window) {
 
   const nextAt = TRACKS.map(() => 0);
   // who is driven by whom: -1 runs its own clock, otherwise the feeder's index
-  const feeders = () => TRACKS.map(t => (followOn(t) ? TRACKS.indexOf(feederOf(t)) : -1));
+  const feeders = () => TRACKS.map((t, i) => (followOn(t) ? feederIdxOf(i) : -1));
   // the event each voice of a track resolves to at the step it stands on
   const resolve = (i, d) => {
     eventOf[i] = voicesOf(TRACKS[i]).map((_, vi) => playEvent(i, vi, posOf[i], d));
@@ -1237,7 +1261,8 @@ if ('IntersectionObserver' in window) {
       TRACKS.forEach((f, j) => {
         if (feeder[j] !== i) return;
         posOf[j] = (posOf[j] + 1) % lenOf(f);
-        heldOf[j] = { degree: chordsOf[i][s], notes: chordNotes(i, s) };
+        // FREEZE keeps the chord it latched on entry; ON takes each one live
+        if (!followFrozen(f)) heldOf[j] = { degree: chordsOf[i][s], notes: chordNotes(i, s) };
         resolve(j, durOf(j, posOf[j]));
         moved[j] = true;
       });
