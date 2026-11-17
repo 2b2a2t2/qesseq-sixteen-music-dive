@@ -230,6 +230,23 @@ if ('IntersectionObserver' in window) {
     8: { name: 'RATCHET' }
   };
   const TARGET_KEY = { MONO: [1, 2, 3, 4], POLY: [5, 6, 3, 4], DRUM: [0, 8, 3, 4] };
+  // POLY playback type (SeqClock.h SeqPolyType): STEP chords play as blocks,
+  // STRUM rakes them, HAND leaves the chord on the keyboard to be played.  A
+  // step's TYPE stamp overrides this; a step left on INHERIT falls back to the
+  // track (Keyboard.cpp effStepType), which boots on STEP like the device
+  const POLY_STEP = 0, POLY_STRUM = 1, POLY_HAND = 2;
+  const polyType = TRACKS.map(() => POLY_STEP);
+  // a HAND step's performed gesture: the note and the ms it was struck at, in
+  // the order the player struck it (stepStrumDt + Keyboard.cpp's literal replay)
+  const handGest = TRACKS.map(t => voicesOf(t).map(() =>
+    Array.from({ length: STEPS_MAX }, () => [])));
+  // a HAND chord that has arrived and is waiting on the keyboard
+  let handBuf = null;
+  // the type the step plays as: its own stamp, else the track's (effStepType)
+  const typeOfStep = (i, vi, s) => {
+    const v = typeOf[i][vi][s];          // 0 inherit, 1 STEP, 2 STRUM, 3 HAND
+    return v ? v - 1 : polyType[i];
+  };
   // what the value targets stamp, in the firmware's own vocabulary
   let fxArm = 1, typeArm = 1, ratArm = 2;              // sus2 / STEP / 2 repeats
   const keyTargetOf = (k, t) => (TARGET_KEY[t.type] || TARGET_KEY.MONO)[k];
@@ -237,6 +254,23 @@ if ('IntersectionObserver' in window) {
     : n === 6 ? TARGETS[6].vals[typeArm] : n === 8 ? '×' + ratArm : '');
   const valAt = (i, vi, s, target) => (target === 5 ? fxOf[i][vi][s]
     : target === 6 ? typeOf[i][vi][s] : target === 8 ? ratOf[i][vi][s] : 0);
+  // the panel's white keys strum whatever chord a HAND step left in the
+  // buffer, and that performance is what the step replays from then on
+  function strikeHandKey(pc) {
+    if (!handBuf) return false;
+    const { i, vi, s, midi } = handBuf;
+    // the key picks its string by pitch class: the chord sets the octave
+    const note = midi.find(m => m % 12 === pc);
+    if (note === undefined) return false;              // not a string of this chord
+    const slot = handGest[i][vi][s];
+    if (slot.some(g => g.m === note)) return false;    // each string once
+    const at = Math.round(performance.now() - handBuf.at);
+    if (at < 0 || at > 65535) return false;
+    slot.push({ m: note, at });
+    paint();
+    return true;
+  }
+
   function stampAt(i, vi, s, target) {
     if (target === 5) fxOf[i][vi][s] = fxOf[i][vi][s] === fxArm ? 0 : fxArm;
     else if (target === 6) typeOf[i][vi][s] = typeOf[i][vi][s] === typeArm ? 0 : typeArm;
@@ -301,7 +335,7 @@ if ('IntersectionObserver' in window) {
     // RATCHET repeats the hit 2..4 times inside the step's own length, the way
     // stepRatchetStamp lays it on a drum voice
     const hits = ratOf[i][vi][s] || 1;
-    return {
+    const ev = {
       strike: true,
       held: false,
       vel: (bits & ACC) ? Math.max(t.vel, t.acc) : t.vel,
@@ -309,6 +343,34 @@ if ('IntersectionObserver' in window) {
       lenMs: (durMs * gate) / hits,
       hits,
     };
+    // POLY: the step's type decides how the chord is voiced.  STEP is the
+    // block it always was; STRUM rakes it; HAND hands it to the player
+    if (t.type === 'POLY') {
+      const et = typeOfStep(i, vi, s);
+      const midi = chordsOf[i][s] >= 0 ? voicingMidi(t, chordsOf[i][s]) : [];
+      if (et === POLY_STRUM && midi.length > 1) {
+        // half a note apart inside the step, clamped 8..40 ms so a slow step
+        // still finishes the rake well before its boundary (Keyboard.cpp)
+        const gap = Math.min(40, Math.max(8, durMs / (midi.length * 2)));
+        ev.notes = midi.slice().sort((a, b) => a - b).map((m, k) => ({ m, at: Math.round(k * gap) }));
+        ev.strumGap = Math.round(gap);
+      } else if (et === POLY_HAND) {
+        const gest = handGest[i][vi][s];
+        if (gest.length) {
+          // the recorded gesture replays literally: the order it was played in
+          // and the real onsets, which may spill past the step's boundary
+          ev.notes = gest.map(g => ({ m: g.m, at: g.at }));
+          ev.handMs = gest[gest.length - 1].at;
+          ev.lenMs = ev.handMs + (durMs * gate) / hits;
+        } else {
+          // no gesture yet: the chord is buffered for the keyboard, not played
+          handBuf = { i, vi, s, midi, at: performance.now() };
+          return { strike: false, held: false, vel: 0, glide: false, lenMs: 0,
+            hits: 0, buffered: true };
+        }
+      }
+    }
+    return ev;
   }
   const trackStrikes = i => eventOf[i].some(e => !!e && e.strike);
   const voiceEvent = () => eventOf[current][voice] || null;
@@ -913,6 +975,19 @@ if ('IntersectionObserver' in window) {
     });
   });
 
+  // the seven white keys are the HAND strings: a HAND step's chord sits in the
+  // buffer until they are struck, and the strikes become the step's replay
+  panelKeys.filter(k => !k.classList.contains('panel__key--black')).forEach(k => {
+    const play = () => strikeHandKey(Number(k.dataset.note));
+    k.setAttribute('role', 'button');
+    k.setAttribute('tabindex', '0');
+    k.setAttribute('aria-label', k.textContent.trim() + ', strum the held chord');
+    k.addEventListener('click', play);
+    k.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); play(); }
+    });
+  });
+
   // One detent of a knob, in that page's own units: CC counts on the encoder
   // page, one step of the cell under it on the other two — an octave, a scale,
   // a root, a 5% gate step, one velocity.  So a click, a wheel notch, an arrow
@@ -1177,6 +1252,9 @@ if ('IntersectionObserver' in window) {
       const notes = current === 1 ? chordNotes(1, n) : [];
       const say = [];
       if (notes.length) say.push(notes.join(' '));
+      if (ev && ev.notes) say.push((ev.strumGap ? 'strum ' : 'hand ') +
+        ev.notes.map(n => n.at).join('·') + ' ms');
+      if (ev && ev.buffered) say.push('HAND buffered - play the white keys');
       if (ev && (ev.strike || ev.held)) say.push('vel ' + ev.vel);
       if (ev && ev.strike) say.push(Math.round(ev.lenMs) + ' ms');
       if (ev && ev.strike && ev.hits > 1) say.push('×' + ev.hits + ' ratchet');
