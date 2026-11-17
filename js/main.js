@@ -613,6 +613,7 @@ if ('IntersectionObserver' in window) {
   const SPEEDS = ['1/64', '1/32', '1/16', '1/8', '1/4', '1/2', '1', '2', '4'];
   const SWINGS = ['OFF', 'MPC60', 'MPC3K', 'SP1200', 'LINN', '808', '909', 'SHUF', 'TRIP'];
   const FOLLOW_NAMES = ['OFF', 'ON', 'FREEZE'];          // Display.cpp folN
+  const POLY_TYPE_NAMES = ['STEP', 'STRUM', 'HAND'];     // seqPolyTypeName
   const KEY_GENRES = ['POP', 'ROCK', 'JAZZ', 'CLASSICAL', 'FOLK', 'COUNTRY',
     'BLUES', 'RNB', 'FUNK', 'METAL', 'HIPHOP', 'ELECTRONIC', 'REGGAE',
     'DUBTECHNO', 'GOSPEL', 'LATIN', 'CINEMATIC', 'MODAL'];
@@ -638,7 +639,15 @@ if ('IntersectionObserver' in window) {
       { label: 'SPEED', min: 0, max: SPEEDS.length - 1, get: t => t.row.speed, set: (t, v) => { t.row.speed = v; }, fmt: v => SPEEDS[v] },
       { label: 'INCH', min: 1, max: 16, get: t => t.row.inch, set: (t, v) => { t.row.inch = v; }, fmt: v => 'CH ' + v },
       { label: 'TRACK', min: 1, max: 16, get: t => t.row.track, set: (t, v) => { t.row.track = v; }, fmt: v => 'CH ' + v },
-      { label: 'TYPE', min: 0, max: 2, ro: true, get: t => TRACK_TYPES.indexOf(t.type), fmt: v => TRACK_TYPES[v] },
+      // SEQMODE3's ENC7 is TYPE: on a POLY track it is the track's own POLY
+      // type (Display.cpp seqPolyTypeName, seqPolyTypeAdjust), which every step
+      // left on INHERIT falls back to.  MONO's own type list and the whole-track
+      // HARM/SKANK types are not modelled, so those tracks keep the track kind
+      { label: 'TYPE', min: 0, max: POLY_TYPE_NAMES.length - 1,
+        ro: t => t.type !== 'POLY',
+        get: t => (t.type === 'POLY' ? polyType[TRACKS.indexOf(t)] : TRACK_TYPES.indexOf(t.type)),
+        set: (t, v) => { polyType[TRACKS.indexOf(t)] = v; },
+        fmt: (v, t) => (t.type === 'POLY' ? POLY_TYPE_NAMES[v] : TRACK_TYPES[v]) },
       { label: 'BPM', min: 20, max: 300, get: () => clock.bpm, set: (t, v) => { clock.bpm = v; } }
     ],
     seq4: [
@@ -867,7 +876,7 @@ if ('IntersectionObserver' in window) {
       const sp = specs[i] || blank;
       if (cell.b) cell.b.textContent = sp.label;
       if (cell.s) cell.s.textContent = sp.dash ? '—'
-        : sp.fmt ? sp.fmt(sp.get(t)) : String(sp.get(t));
+        : sp.fmt ? sp.fmt(sp.get(t), t) : String(sp.get(t));
     });
     if (rowHead) {
       rowHead.textContent = (mode === 'seq' ? 'SEQUENCER ' : 'KEYBOARD ') +
@@ -1009,7 +1018,7 @@ if ('IntersectionObserver' in window) {
     const rk = rowKey();
     if (rk) {
       const sp = (ROW_SPECS[rk] || [])[i];
-      if (!sp || sp.dash || sp.ro || !sp.set) return;
+      if (!sp || sp.dash || (typeof sp.ro === 'function' ? sp.ro(t) : sp.ro) || !sp.set) return;
       const wasFollow = t.row.follow;
       const wasInch = t.row.inch;
       sp.set(t, clamp(sp.get(t) + steps, sp.min, sp.max));
